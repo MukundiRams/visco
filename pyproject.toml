@@ -5,6 +5,11 @@ description = "A tool for compressing visibility data using singular value decom
 authors = ["MukundiRams <2094318@students.wits.ac.za>"]
 readme = "README.md"
 
+license = "GNU GPL v3"
+include = [{ path = "tests" }]
+packages = [
+    { include = "visco"}]
+
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
 dask-ms = {extras = ["xarray"], version = "^0.2.21"}

@@ -1,9 +1,10 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
 *.ipynb
+*$py.class
+
+# Python
 .Python
 build/
 develop-eggs/
@@ -21,16 +22,19 @@ wheels/
 .installed.cfg
 *.egg
 
+# Jupyter Notebook
+.ipynb_checkpoints
+.ipynb
+
 # Virtual Environment
 venv/
 ENV/
 .env
 .venv
 env/
+.tenv/
 tenv/
 
-# Poetry
-poetry.lock
 
 # IDE
 .idea/

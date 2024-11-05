@@ -9,7 +9,7 @@ from typing import Union
 from visco.msvolume import data_volume_calc,compression_factor
 # from scabha.basetypes import File
 from copy import deepcopy,copy
-from visco.utilities import ObjDict
+from utilities import ObjDict
 import visco
 log = visco.get_logger(name="BDSVD")
 # from tqdm import tqdm
