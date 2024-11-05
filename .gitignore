@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.ipynb
 .Python
 build/
 develop-eggs/
@@ -26,6 +27,7 @@ ENV/
 .env
 .venv
 env/
+tenv/
 
 # Poetry
 poetry.lock
