@@ -69,6 +69,13 @@ def decompress_visdata(zarr_path, output_column='DECOMPRESSED_DATA',ms='decompre
         output_column: (("row", "chan", "corr"), decompressed_data),
         "ANTENNA1": (("row",), da.from_array(root['ANTENNA1'][:])),
         "ANTENNA2": (("row",), da.from_array(root['ANTENNA2'][:])),
+        "TIME": (("row",), da.from_array(root['TIME'][:])),
+        "TIME_CENTROID": (("row",), da.from_array(root['TIME_CENTROID'][:])),
+        "INTERVAL": (("row",), da.from_array(root['INTERVAL'][:])),
+        "EXPOSURE": (("row",), da.from_array(root['EXPOSURE'][:])),
+        "UVW": (("row","uvw_dim"), da.from_array(root['UVW'][:])),
+        "SCAN_NUMBER": (("row",), da.from_array(root['SCAN_NUMBER'][:])),
+        "FIELD_ID": (("row",), da.from_array(root['FIELD_ID'][:]))
         
     }
     

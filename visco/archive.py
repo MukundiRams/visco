@@ -145,7 +145,8 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
     in Zarr file.
     """
     
-    maintable = xds_from_table(ms)[0]
+     
+    maintable = xds_from_table(ms,taql_where=f"FIELD_ID={fieldid} AND DATA_DESC_ID={ddid} AND SCAN_NUMBER={scan}")[0]
     num_corr = len(correlation)
     compressed_data = copy(maintable[column].data)
     
@@ -162,6 +163,13 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
     chunk_size = (1, compressed_data.shape[1], compressed_data.shape[2])
     root.create_dataset('ANTENNA1', data=maintable.ANTENNA1.values)
     root.create_dataset('ANTENNA2', data=maintable.ANTENNA2.values)
+    root.create_dataset('TIME',data=maintable.TIME.values)
+    root.create_dataset('UVW',data=maintable.UVW.values)
+    root.create_dataset('EXPOSURE',data=maintable.EXPOSURE.values)
+    root.create_dataset('INTERVAL',data=maintable.INTERVAL.values)
+    root.create_dataset('TIME_CENTROID',data=maintable.TIME_CENTROID.values)
+    root.create_dataset('SCAN_NUMBER',data=maintable.SCAN_NUMBER.values)
+    root.create_dataset('FIELD_ID',data=maintable.FIELD_ID.values)
     
     root.attrs["shape"] = compressed_data.shape
     # root.attrs["datatype"] = compressed_data.dtype
