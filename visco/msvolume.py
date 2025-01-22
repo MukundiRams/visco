@@ -79,7 +79,7 @@ def data_volume_calc(num_polarisations,
 def compression_factor(m,n,compressionrank):
     
     originalsize = m*n
-    newsize = compressionrank*(m+n+0.5)
+    newsize = 1*(m+n+0.5)
     
     cf = originalsize/newsize
     

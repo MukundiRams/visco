@@ -147,6 +147,7 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
     
      
     maintable = xds_from_table(ms,taql_where=f"FIELD_ID={fieldid} AND DATA_DESC_ID={ddid} AND SCAN_NUMBER={scan}")[0]
+    spw_table = xds_from_table(f"{ms}::SPECTRAL_WINDOW")[0]
     num_corr = len(correlation)
     compressed_data = copy(maintable[column].data)
     
@@ -172,8 +173,21 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
     root.create_dataset('FIELD_ID',data=maintable.FIELD_ID.values)
     
     root.attrs["shape"] = compressed_data.shape
+    root.attrs["chunks"] = compressed_data.chunks
     # root.attrs["datatype"] = compressed_data.dtype
     # print(compressed_data.dtype)
+    
+    #storing subtables
+    spw = root.create_group('SPECTRAL_WINDOW')
+    spw.create_dataset('CHAN_WIDTH',data=spw_table.CHAN_WIDTH.values )
+    spw.create_dataset('CHAN_FREQ',data=spw_table.CHAN_FREQ.values )
+    spw.create_dataset('NUM_CHAN',data=spw_table.NUM_CHAN.values )
+    spw.create_dataset('TOTAL_BANDWIDTH',data=spw_table.TOTAL_BANDWIDTH.values )
+    spw.create_dataset('RESOLUTION',data=spw_table.RESOLUTION.values )
+    spw.create_dataset('EFFECTIVE_BW',data=spw_table.EFFECTIVE_BW.values )
+    spw.create_dataset('MEAS_FREQ_REF',data=spw_table.MEAS_FREQ_REF.values )
+    spw.create_dataset('REF_FREQUENCY',data=spw_table.REF_FREQUENCY.values )
+    spw.create_dataset('FLAG_ROW',data=spw_table.FLAG_ROW.values )
     
     decomp_group = root.create_group('DECOMPOSITIONS')
 
@@ -211,7 +225,8 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
                     'baseline_filter': baseline_filter.tolist(),  
                     'ci': ci,
                     'shape': (m, n),
-                    'fullrank': fullrank
+                    'fullrank': fullrank,
+                
                 })
                 
                 

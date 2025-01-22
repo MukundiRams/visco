@@ -5,7 +5,7 @@ import os
 from daskms import xds_from_table,xds_from_ms,xds_to_table
 import numpy as np
 from typing import Union
-# from bdsvd.msodify import add_column,delete_column
+from visco.msmodify import add_column,delete_column
 from visco.msvolume import data_volume_calc,compression_factor
 # from scabha.basetypes import File
 from copy import deepcopy,copy
@@ -158,157 +158,24 @@ def reconstruction(U,singular_vals,WT,fullrank,compressionrank=-1,type='cum'):
         return compressed_data
 
 
-# def compress_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
-#                 column='DATA', outcol='COMPRESSED_DATA', compressionrank=None,type='cum',
-#                 decorrelation=None, process='simulate', autocorrelation=False,
-#                 antlist=None, flagvalue=0, zarr_output_path=None):
-    
-#     """
-#     Compress the visibility data.
-#     """
-#     maintable = xds_from_table(ms)[0]
-#     num_corr = len(correlation)
-#     compressed_data = copy(maintable[column].data)
-    
-    
-#     vis_data,nbaselines = decompose(ms=ms, correlation=correlation, fieldid=fieldid,
-#                          ddid=ddid, scan=scan, column=column,
-#                        autocorrelation=autocorrelation,antlist=antlist, flagvalue=flagvalue)
-    
-    
-    
-#     if compressionrank is not None and decorrelation is not None:
-#         raise ValueError(f"Only compressionrank or decorrelation should be provided, not both.")
-
-#     if decorrelation is not None:
-#         pass
-    
-#     elif compressionrank is not None:
-#         total_data_size = 0
-#         total_compressed_size = 0
-        
-#         decomp_components = {
-#             'U': {},
-#             'singvals': {},
-#             'WT': {},
-#             'baseline_info': {}
-#         }
-        
-#         recon_dict = {}
-#         for bli in vis_data:
-#             recon_dict[bli] = {}
-#             for corr in correlation.split(','):
-#                 U,singvals,WT = vis_data[bli][corr].data
-#                 fullrank = vis_data[bli][corr].rank
-#                 m,n = vis_data[bli][corr].shape
-#                 baseline_filter = vis_data[bli]["baseline_filter"]
-#                 ci = vis_data[bli][corr].ci
-#                 ant1name = vis_data[bli]["ant1name"]
-#                 ant2name = vis_data[bli]["ant2name"]
-                
-#                 compressed_visdata = reconstruction(U,singvals,WT,fullrank,compressionrank,'cum')
-#                 compressed_data[baseline_filter, :, ci] = compressed_visdata
-#                 # recon_dict[bli][corr] = {
-#                 #     "compressed_data": compressed_visdata,
-#                 # }
-#                 # maintable[outcol].data[baseline_filter,:,ci]  = compressed_visdata
-                
-#                 compressionratio = compression_factor(m,n,compressionrank)
-
-#                 log.info(f"The visibility data for baseline {ant1name}-{ant2name} and"
-#                          f" correlation {corr} has been compressed and stored in"
-#                          f" {outcol} with a compression factor of {compressionratio}.")
-                
-#                 baseline_key = f"{ant1name}-{ant2name}_{corr}"
-#                 decomp_components['U'][baseline_key] = U
-#                 decomp_components['singvals'][baseline_key] = singvals
-#                 decomp_components['WT'][baseline_key] = WT
-#                 decomp_components['baseline_info'][baseline_key] = {
-#                     'ci': ci,
-#                     'shape': (m, n),
-#                     'fullrank': fullrank
-#                 }
-                
-#                 baseline_data_volume = data_volume_calc(num_polarisations=num_corr,nrows=m,num_channels=n,
-#                                                      auto_correlations=autocorrelation,num_data_cols=0)
-#                 baseline_data_volume_with_data = data_volume_calc(num_polarisations=1,nrows=m,num_channels=n,
-#                                                      auto_correlations=autocorrelation,num_data_cols=1)
-#                 baseline_data_size = baseline_data_volume_with_data - baseline_data_volume
-#                 baseline_compressed_size = np.ceil(baseline_data_size/compressionratio)
-                
-#                 total_data_size += baseline_data_size
-#                 total_compressed_size += baseline_compressed_size
-                
-                
-        
-#         # add_column(ms, column,outcol,compressed_data)
-#         # if process=='simulate':
-#         #     pass
-#         # elif process == 'archive':
-#         #     delete_column(ms,column)
-#         # else:
-#         #     raise ValueError(f"Process can only be 'simulate' or 'archive'. Please choose one.")
-    
-#         compressed_xds = xr.Dataset({
-#             outcol: (("row", "chan", "corr"), compressed_data),
-#             "ANTENNA1": (("row",), maintable.ANTENNA1.data),
-#             "ANTENNA2": (("row",), maintable.ANTENNA2.data),
-                
-#             })
-        
-#         for baseline_key, U_matrix in decomp_components['U'].items():
-#             compressed_xds[f"U_{baseline_key}"] = (("decomp_row", "decomp_col"), U_matrix)
-        
-#         # Store singular values
-#         for baseline_key, singvals_vec in decomp_components['singvals'].items():
-#             compressed_xds[f"singvals_{baseline_key}"] = (("singular_values",), singvals_vec)
-        
-#         # Store WT matrices
-#         # for baseline_key, WT_matrix in decomp_components['WT'].items():
-#         #     compressed_xds[f"WT_{baseline_key}"] = (("decomp_row", "decomp_col"), WT_matrix)
-        
-#         # Store baseline information as attributes
-#         compressed_xds.attrs['baseline_info'] = str(decomp_components['baseline_info'])
-#         compressed_xds.attrs['compression_rank'] = compressionrank
-        
-#         if not zarr_output_path:
-#             zarr_output_path = os.path.join(os.getcwd(), "output_data", "compresseddata.zarr")
-
-
-#         try:
-#             compressed_xds.to_zarr(zarr_output_path, mode="w")
-#             log.info(f"Compressed visibility data successfully stored at {zarr_output_path}.")
-#         except Exception as e:
-#             log.error(f"Failed to write to Zarr format at {zarr_output_path}: {e}")
-        
-        
-#         # log.info(f"Visibility data has been compressed"
-#         #          f" from data size of {total_data_size/  1e9:.2e} GB to a compressed"
-#         #          f" data size of {total_compressed_size/  1e9:.2e} GB")
-    
-    
-#     else:
-#         raise ValueError(f"Neither compressionrank or decorrelation is provided. Please provide one.")
-    
-
-
 def compress_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
                 column='DATA', outcol='COMPRESSED_DATA', compressionrank=None,type='cum',
                 decorrelation=None, process='simulate', autocorrelation=False,
                 antlist=None, flagvalue=0, zarr_output_path=None):
     
     """
-    Compress the visibility data and store both compressed data and decomposition components
-    in a hierarchical Zarr structure.
+    Compress the visibility data.
     """
-    
     maintable = xds_from_table(ms)[0]
     num_corr = len(correlation)
     compressed_data = copy(maintable[column].data)
     
+    
     vis_data,nbaselines = decompose(ms=ms, correlation=correlation, fieldid=fieldid,
                          ddid=ddid, scan=scan, column=column,
                        autocorrelation=autocorrelation,antlist=antlist, flagvalue=flagvalue)
+    
+    
     
     if compressionrank is not None and decorrelation is not None:
         raise ValueError(f"Only compressionrank or decorrelation should be provided, not both.")
@@ -320,76 +187,108 @@ def compress_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
         total_data_size = 0
         total_compressed_size = 0
         
-        if not zarr_output_path:
-            zarr_output_path = os.path.join(os.getcwd(), "output_data", "compresseddata.zarr")
-
+        # decomp_components = {
+        #     'U': {},
+        #     'singvals': {},
+        #     'WT': {},
+        #     'baseline_info': {}
+        # }
         
-        root = zarr.open(zarr_output_path, mode='w')
-        
-        
-        chunk_size = (1, compressed_data.shape[1], compressed_data.shape[2])
-        root.create_dataset(outcol, data=compressed_data.compute(),chunks = chunk_size)
-        root.create_dataset('ANTENNA1', data=maintable.ANTENNA1.values)
-        root.create_dataset('ANTENNA2', data=maintable.ANTENNA2.values)
-        
-        
-        root.attrs['compression_rank'] = compressionrank
-        
-        
-        decomp_group = root.create_group('DECOMPOSITIONS')
-        
-        baseline_info = {}
-        
+        recon_dict = {}
         for bli in vis_data:
-            ant1name = vis_data[bli]["ant1name"]
-            ant2name = vis_data[bli]["ant2name"]
-            baseline_key = f"{ant1name}-{ant2name}"
-            
-            
-            baseline_group = decomp_group.create_group(baseline_key)
-            
+            recon_dict[bli] = {}
             for corr in correlation.split(','):
-                U, singvals, WT = vis_data[bli][corr].data
+                U,singvals,WT = vis_data[bli][corr].data
                 fullrank = vis_data[bli][corr].rank
-                m, n = vis_data[bli][corr].shape
+                m,n = vis_data[bli][corr].shape
                 baseline_filter = vis_data[bli]["baseline_filter"]
                 ci = vis_data[bli][corr].ci
+                ant1name = vis_data[bli]["ant1name"]
+                ant2name = vis_data[bli]["ant2name"]
                 
-                
-                corr_group = baseline_group.create_group(corr)
-                corr_group.create_dataset('U', data=U.compute())
-                corr_group.create_dataset('singvals', data=singvals.compute())
-                corr_group.create_dataset('WT', data=WT.compute())
-                
-                
-                corr_group.attrs.update({
-                    'baseline_filter': baseline_filter.tolist(),  # Convert numpy array to list for JSON serialization
-                    'ci': ci,
-                    'shape': (m, n),
-                    'fullrank': fullrank
-                })
-                
-                compressed_visdata = reconstruction(U, singvals, WT, fullrank, compressionrank, 'cum')
+                compressed_visdata = reconstruction(U,singvals,WT,fullrank,compressionrank,type)
                 compressed_data[baseline_filter, :, ci] = compressed_visdata
+                # recon_dict[bli][corr] = {
+                #     "compressed_data": compressed_visdata,
+                # }
+                # maintable[outcol].data[baseline_filter,:,ci]  = compressed_visdata
                 
-                compressionratio = compression_factor(m, n, compressionrank)
+                compressionratio = compression_factor(m,n,compressionrank)
+
+                log.info(f"The visibility data for baseline {ant1name}-{ant2name} and"
+                         f" correlation {corr} has been compressed and stored in"
+                         f" {outcol} with a compression factor of {compressionratio}.")
                 
-                baseline_data_volume = data_volume_calc(num_polarisations=num_corr, nrows=m, num_channels=n,
-                                                     auto_correlations=autocorrelation, num_data_cols=0)
-                baseline_data_volume_with_data = data_volume_calc(num_polarisations=1, nrows=m, num_channels=n,
-                                                     auto_correlations=autocorrelation, num_data_cols=1)
+                # baseline_key = f"{ant1name}-{ant2name}_{corr}"
+                # decomp_components['U'][baseline_key] = U
+                # decomp_components['singvals'][baseline_key] = singvals
+                # decomp_components['WT'][baseline_key] = WT
+                # decomp_components['baseline_info'][baseline_key] = {
+                #     'ci': ci,
+                #     'shape': (m, n),
+                #     'fullrank': fullrank
+                # }
+                
+                baseline_data_volume = data_volume_calc(num_polarisations=num_corr,nrows=m,num_channels=n,
+                                                     auto_correlations=autocorrelation,num_data_cols=0)
+                baseline_data_volume_with_data = data_volume_calc(num_polarisations=1,nrows=m,num_channels=n,
+                                                     auto_correlations=autocorrelation,num_data_cols=1)
                 baseline_data_size = baseline_data_volume_with_data - baseline_data_volume
                 baseline_compressed_size = np.ceil(baseline_data_size/compressionratio)
                 
                 total_data_size += baseline_data_size
                 total_compressed_size += baseline_compressed_size
                 
-                log.info(f"The visibility data for baseline {baseline_key} and"
-                         f" correlation {corr} has been compressed with a compression factor of {compressionratio}.")
+                
         
-        log.info(f"Compressed visibility data and decomposition components successfully stored at {zarr_output_path}")
+        add_column(ms,outcol,compressed_data)
+        if process=='simulate':
+            pass
+        elif process == 'archive':
+            delete_column(ms,column)
+        else:
+            raise ValueError(f"Process can only be 'simulate' or 'archive'. Please choose one.")
+    
+        # compressed_xds = xr.Dataset({
+        #     outcol: (("row", "chan", "corr"), compressed_data),
+        #     "ANTENNA1": (("row",), maintable.ANTENNA1.data),
+        #     "ANTENNA2": (("row",), maintable.ANTENNA2.data),
+                
+        #     })
         
-    else:
-        raise ValueError(f"Neither compressionrank or decorrelation is provided. Please provide one.")  
+        # for baseline_key, U_matrix in decomp_components['U'].items():
+        #     compressed_xds[f"U_{baseline_key}"] = (("decomp_row", "decomp_col"), U_matrix)
+        
+        # # Store singular values
+        # for baseline_key, singvals_vec in decomp_components['singvals'].items():
+        #     compressed_xds[f"singvals_{baseline_key}"] = (("singular_values",), singvals_vec)
+        
+        # # Store WT matrices
+        # # for baseline_key, WT_matrix in decomp_components['WT'].items():
+        # #     compressed_xds[f"WT_{baseline_key}"] = (("decomp_row", "decomp_col"), WT_matrix)
+        
+        # # Store baseline information as attributes
+        # compressed_xds.attrs['baseline_info'] = str(decomp_components['baseline_info'])
+        # compressed_xds.attrs['compression_rank'] = compressionrank
+        
+        # if not zarr_output_path:
+        #     zarr_output_path = os.path.join(os.getcwd(), "output_data", "compresseddata.zarr")
 
+
+        # try:
+        #     compressed_xds.to_zarr(zarr_output_path, mode="w")
+        #     log.info(f"Compressed visibility data successfully stored at {zarr_output_path}.")
+        # except Exception as e:
+        #     log.error(f"Failed to write to Zarr format at {zarr_output_path}: {e}")
         
+        
+        log.info(f"Visibility data has been compressed"
+                 f" from data size of {total_data_size/  1e9:.2e} GB to a compressed"
+                 f" data size of {total_compressed_size/  1e9:.2e} GB")
+    
+    
+    else:
+        raise ValueError(f"Neither compressionrank or decorrelation is provided. Please provide one.")
+    
+
+

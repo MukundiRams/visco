@@ -26,15 +26,19 @@ def decompress_visdata(zarr_path, output_column='DECOMPRESSED_DATA',ms='decompre
     
        
     root = zarr.open(zarr_path, mode='r')
+    spw  = root["SPECTRAL_WINDOW"]
     
     
     
     # compressed_data_key = [key for key in root.array_keys() 
     #                      if key.startswith('COMPRESSED_DATA')][0]
     shape = root.attrs["shape"]
+    chunks = root.attrs["chunks"]
+    # print(f"shape:{shape}\n")
+    # print(f"chunks:{chunks[0][0]}")
     # datatype = root.attrs["datatype"]
     
-    decompressed_data = da.zeros(shape=shape,dtype=complex)
+    decompressed_data = da.zeros(shape=shape,dtype=complex,chunks=chunks[0][0])
     
     
     decomp_group = root['DECOMPOSITIONS']
@@ -64,18 +68,21 @@ def decompress_visdata(zarr_path, output_column='DECOMPRESSED_DATA',ms='decompre
             
             log.info(f"Decompressed visibility data for baseline {baseline_key}, correlation {corr}")
     
+    num_rows = decompressed_data.shape[0]
+    
+
     
     decompressed_xds = {
         output_column: (("row", "chan", "corr"), decompressed_data),
-        "ANTENNA1": (("row",), da.from_array(root['ANTENNA1'][:])),
-        "ANTENNA2": (("row",), da.from_array(root['ANTENNA2'][:])),
-        "TIME": (("row",), da.from_array(root['TIME'][:])),
-        "TIME_CENTROID": (("row",), da.from_array(root['TIME_CENTROID'][:])),
-        "INTERVAL": (("row",), da.from_array(root['INTERVAL'][:])),
-        "EXPOSURE": (("row",), da.from_array(root['EXPOSURE'][:])),
-        "UVW": (("row","uvw_dim"), da.from_array(root['UVW'][:])),
-        "SCAN_NUMBER": (("row",), da.from_array(root['SCAN_NUMBER'][:])),
-        "FIELD_ID": (("row",), da.from_array(root['FIELD_ID'][:]))
+        "ANTENNA1": (("row",), da.from_array(root['ANTENNA1'][:],chunks=chunks[0][0])),
+        "ANTENNA2": (("row",), da.from_array(root['ANTENNA2'][:],chunks=chunks[0][0])),
+        "TIME": (("row",), da.from_array(root['TIME'][:],chunks=chunks[0][0])),
+        "TIME_CENTROID": (("row",), da.from_array(root['TIME_CENTROID'][:],chunks=chunks[0][0])),
+        "INTERVAL": (("row",), da.from_array(root['INTERVAL'][:],chunks=chunks[0][0])),
+        "EXPOSURE": (("row",), da.from_array(root['EXPOSURE'][:],chunks=chunks[0][0])),
+        "UVW": (("row","uvw_dim"), da.from_array(root['UVW'][:],chunks=chunks[0][0])),
+        "SCAN_NUMBER": (("row",), da.from_array(root['SCAN_NUMBER'][:],chunks=chunks[0][0])),
+        "FIELD_ID": (("row",), da.from_array(root['FIELD_ID'][:],chunks=chunks[0][0]))
         
     }
     
@@ -83,12 +90,25 @@ def decompress_visdata(zarr_path, output_column='DECOMPRESSED_DATA',ms='decompre
     
     log.info(f"Successfully decompressed visibility data from {zarr_path}")
     
+    
     main_table = daskms.Dataset(
-    decompressed_xds, coords={"ROWID": ("row", da.arange(decompressed_data.shape[0]))})
+    decompressed_xds, coords={"ROWID": ("row", da.arange(num_rows,chunks=chunks[0][0]))})
 
 
     write_main = xds_to_table(main_table, ms)
     dask.compute(write_main)
+    
+    
+    print(spw["CHAN_WIDTH"][0][:])
+    spw_xds = {
+        "CHAN_WIDTH":(("row"),da.from_array(spw["CHAN_WIDTH"][0][:]))
+    }
+    
+    spw_table = daskms.Dataset(
+        spw_xds
+    )
+    write_spw = xds_to_table(spw_table,ms)
+    dask.compute(write_spw)
     
     # return decompressed_xds
         
