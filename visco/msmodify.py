@@ -144,6 +144,7 @@ def add_column(msfile: str, outcol: str, write_data: da.Array = None):
         
         if outcol in table:
             log.info(f"Data column {outcol} already exists, will update it now!")
+            # delete_column(msfile,outcol)
         else:
             log.info(f"Data column {outcol} doesn't exist, will create it and populate it now!")
         
@@ -189,7 +190,7 @@ def delete_column(msfile: str, colname: str):
     
     try:
         # Open the table directly with casacore
-        with table(msfile, readonly=False) as tb:
+        with table(msfile, readonly=False,lockoptions='auto') as tb:
             if colname in tb.colnames():
                 tb.removecols(colname)
                 log.info(f"Data column {colname} exists, deleting it now!")

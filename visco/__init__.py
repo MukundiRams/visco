@@ -25,8 +25,8 @@ def get_logger(name, level="DEBUG"):
     return logging.getLogger(name)
 
 
-LOG = get_logger("BDSVD")
+LOG = get_logger("VISCO")
 
-BIN = OmegaConf.create({"BDSVD": "BDSVD",
-                        
+BIN = OmegaConf.create({"archival": "archival",
+                        "decompression": "decompression"
                         })

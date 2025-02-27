@@ -1,0 +1,83 @@
+
+inputs:
+  ms:
+    info: The Measurement Set file path or name.
+    dtype: str
+    default: null
+    required: True
+    policies:
+      positional: true
+
+
+
+  fieldid:
+    info: The field ID to be used.
+    dtype: int
+    default: 0
+
+
+  ddid:
+    info: The data description ID to be used.
+    dtype: int
+    default: 0
+
+
+  scan:
+    info: The scan number to be used.
+    dtype: int
+    default: 1
+
+
+  correlation:
+    info: The correlation to be used.
+    dtype: str
+    default: XX
+
+
+  column:
+    info: The column to be used.
+    dtype: str
+    default: 'DATA'
+
+
+  compressionrank:
+    info: The compression rank to be used.
+    dtype: int
+    default: null
+
+
+
+  decorrelation:
+    info: The decorrelation to be used.
+    dtype: float
+    default: null
+
+
+
+  outfilename:
+    info: The output file name.
+    dtype: str
+    default: compressed-data.zarr
+
+
+  autocorrelation:
+    info: Whether there are auto correlations.
+    dtype: bool
+    default: False
+
+
+  antlist:
+    info: The list of antennas to be used.
+    dtype: list
+    
+
+
+
+  flagvalue:
+    info: The flag value to be used.
+    dtype: float
+    default: 0.0
+
+outputs:
+  {}
+

@@ -1,0 +1,21 @@
+  
+inputs:  
+  zarr_path:
+    info: Path to the zarr file containing the compressed data
+    dtype: str
+    required: true
+    default: null
+
+  output_column:
+    info: The column to be used.
+    dtype: str
+    default: 'DATA'
+
+
+  ms:
+    info: The output Measurement Set file name.
+    dtype: str
+    default: decompressed.ms
+
+outputs:
+  {}

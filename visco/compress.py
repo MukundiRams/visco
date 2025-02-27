@@ -219,15 +219,7 @@ def compress_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
                          f" correlation {corr} has been compressed and stored in"
                          f" {outcol} with a compression factor of {compressionratio}.")
                 
-                # baseline_key = f"{ant1name}-{ant2name}_{corr}"
-                # decomp_components['U'][baseline_key] = U
-                # decomp_components['singvals'][baseline_key] = singvals
-                # decomp_components['WT'][baseline_key] = WT
-                # decomp_components['baseline_info'][baseline_key] = {
-                #     'ci': ci,
-                #     'shape': (m, n),
-                #     'fullrank': fullrank
-                # }
+            
                 
                 baseline_data_volume = data_volume_calc(num_polarisations=num_corr,nrows=m,num_channels=n,
                                                      auto_correlations=autocorrelation,num_data_cols=0)
@@ -249,37 +241,6 @@ def compress_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
         else:
             raise ValueError(f"Process can only be 'simulate' or 'archive'. Please choose one.")
     
-        # compressed_xds = xr.Dataset({
-        #     outcol: (("row", "chan", "corr"), compressed_data),
-        #     "ANTENNA1": (("row",), maintable.ANTENNA1.data),
-        #     "ANTENNA2": (("row",), maintable.ANTENNA2.data),
-                
-        #     })
-        
-        # for baseline_key, U_matrix in decomp_components['U'].items():
-        #     compressed_xds[f"U_{baseline_key}"] = (("decomp_row", "decomp_col"), U_matrix)
-        
-        # # Store singular values
-        # for baseline_key, singvals_vec in decomp_components['singvals'].items():
-        #     compressed_xds[f"singvals_{baseline_key}"] = (("singular_values",), singvals_vec)
-        
-        # # Store WT matrices
-        # # for baseline_key, WT_matrix in decomp_components['WT'].items():
-        # #     compressed_xds[f"WT_{baseline_key}"] = (("decomp_row", "decomp_col"), WT_matrix)
-        
-        # # Store baseline information as attributes
-        # compressed_xds.attrs['baseline_info'] = str(decomp_components['baseline_info'])
-        # compressed_xds.attrs['compression_rank'] = compressionrank
-        
-        # if not zarr_output_path:
-        #     zarr_output_path = os.path.join(os.getcwd(), "output_data", "compresseddata.zarr")
-
-
-        # try:
-        #     compressed_xds.to_zarr(zarr_output_path, mode="w")
-        #     log.info(f"Compressed visibility data successfully stored at {zarr_output_path}.")
-        # except Exception as e:
-        #     log.error(f"Failed to write to Zarr format at {zarr_output_path}: {e}")
         
         
         log.info(f"Visibility data has been compressed"

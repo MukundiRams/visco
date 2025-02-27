@@ -18,6 +18,11 @@ click = "^8.1.7"
 omegaconf = "^2.3.0"
 
 
+[tool.poetry.scripts]
+
+archival = "visco.parser_config.archival:runit"
+decompression = "visco.parser_config.decompression:runit"
+
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
 

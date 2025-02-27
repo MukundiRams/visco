@@ -1,0 +1,78 @@
+version: 1.0beta1
+
+Archival:
+  ms:
+  info: The Measurement Set file path or name.
+  dtype: str
+  default: null
+  required: True
+  example: /path/to/visco/data/2020-01-01T00:00:00.ms
+
+
+fieldid:
+  info: The field ID to be used.
+  dtype: int
+  default: 0
+
+
+ddid:
+  info: The data description ID to be used.
+  dtype: int
+  default: 0
+
+
+scan:
+  info: The scan number to be used.
+  dtype: int
+  default: 1
+
+
+correlation:
+  info: The correlation to be used.
+  dtype: str
+  default: 'XX, XY, YX, YY'
+
+
+column:
+  info: The column to be used.
+  dtype: str
+  default: 'DATA'
+
+
+compressionrank:
+  info: The compression rank to be used.
+  dtype: int
+  default: null
+  example: 10
+
+
+decorrelation:
+  info: The decorrelation to be used.
+  dtype: float
+  default: null
+  example: 0.98
+
+
+outfilename:
+  info: The output file name.
+  dtype: str
+  default: compressed-data.zarr
+
+
+autocorrelation:
+  info: Whether there are auto correlations.
+  dtype: bool
+  default: False
+
+
+antlist:
+  info: The list of antennas to be used.
+  dtype: list
+  default: []
+  example: [0, 1, 2, 3]
+
+
+flagvalue:
+  info: The flag value to be used.
+  dtype: float
+  default: 0.0
