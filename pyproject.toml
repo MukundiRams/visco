@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "visco"
-version = "0.1.1"
+version = "0.1.3"
 description = "A tool for compressing visibility data using singular value decomposition (SVD)"
 authors = ["Mukundi Ramanyimi <rams.muks@gmail.com>"]
 readme = "README.md"
