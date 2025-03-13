@@ -499,7 +499,7 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
                 if n == 0:
                     n = len(singvals)
 
-                print(f"Baseline: {baseline_key}, n: {n}")
+                log.info(f"Baseline: {baseline_key}, n: {n}")
                 m, n_orig = vis_data[bli][corr].shape
                 baseline_filter = vis_data[bli]["baseline_filter"]
    

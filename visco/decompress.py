@@ -77,7 +77,6 @@ def decompress_visdata(zarr_path, output_column='DATA',output_ms='decompressed.m
     #Shape and chunk of the data.
     shape = maintable.attrs['shape']
     chunks = maintable.chunksizes['row'][0]
-    print(f"chunks:{chunks}")
    
     #Initialize zeros.
     decompressed_data = da.zeros(shape=shape,dtype=complex,chunks=chunks)
