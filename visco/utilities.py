@@ -1,3 +1,4 @@
+#Lifted from simms 3.0
 class ObjDict(object):
     def __init__(self, items):
         """

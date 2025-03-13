@@ -34,7 +34,6 @@ def runit(**kwargs):
     column = opts.column
     autocorrelation = opts.autocorrelation
     antlist = opts.antlist
-    print(f"ANTLIST:{antlist}")
     flagvalue = opts.flagvalue
     correlation = opts.correlation
     outfilename = opts.outfilename
