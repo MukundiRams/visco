@@ -2,7 +2,7 @@
 name = "visco"
 version = "0.1.0"
 description = "A tool for compressing visibility data using singular value decomposition (SVD)"
-authors = ["MukundiRams <2094318@students.wits.ac.za>"]
+authors = ["Mukundi Ramanyimi <rams.muks@gmail.com>"]
 readme = "README.md"
 
 license = "GNU GPL v3"
