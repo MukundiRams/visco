@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "visco"
-version = "0.1.0"
+version = "0.1.1"
 description = "A tool for compressing visibility data using singular value decomposition (SVD)"
 authors = ["Mukundi Ramanyimi <rams.muks@gmail.com>"]
 readme = "README.md"
@@ -16,6 +16,8 @@ dask-ms = {extras = ["xarray"], version = "^0.2.21"}
 zarr = "2.18.3"
 click = "^8.1.7"
 omegaconf = "^2.3.0"
+tdqm = "*"
+stimela = ">=2.0"
 
 
 [tool.poetry.scripts]
