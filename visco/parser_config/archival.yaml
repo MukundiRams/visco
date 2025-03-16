@@ -14,36 +14,42 @@ inputs:
     info: The field ID to be used.
     dtype: int
     default: 0
+    abbreviation: fid
 
 
   ddid:
     info: The data description ID to be used.
     dtype: int
     default: 0
+    abbreviation: did
 
 
   scan:
     info: The scan number to be used.
     dtype: int
     default: 1
+    abbreviation: s
 
 
   correlation:
     info: The correlation to be used.
     dtype: str
-    default: XX
+    default: XX,YY
+    abbreviation: corr
 
 
   column:
     info: The column to be used.
     dtype: str
     default: 'DATA'
+    abbreviation: col
 
 
   compressionrank:
     info: The compression rank to be used.
     dtype: int
     default: null
+    abbreviation: cr
 
 
 
@@ -51,6 +57,7 @@ inputs:
     info: The decorrelation to be used.
     dtype: float
     default: null
+    abbreviation: dec
 
 
 
@@ -58,25 +65,34 @@ inputs:
     info: The output file name.
     dtype: str
     default: compressed-data.zarr
+    abbreviation: of
 
 
   autocorrelation:
     info: Whether there are auto correlations.
     dtype: bool
     default: False
+    abbreviation: ac
 
 
   antlist:
     info: The list of antennas to be used.
     dtype: list
-    
-
-
+    default: None
+    abbreviation: al
+   
 
   flagvalue:
     info: The flag value to be used.
     dtype: float
     default: 0.0
+    abbreviation: fv
+
+  weightcr:
+    info: The number of singular values or rank to use on the WEIGHT column.
+    dtype: int
+    default: 1
+    abbreviation: wcr
 
 outputs:
   {}

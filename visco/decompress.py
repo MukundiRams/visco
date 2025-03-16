@@ -41,7 +41,7 @@ def reconstruction(U,S,WT):
     
     return recon_data
 
-def decompress_visdata(zarr_path, output_column='DATA',output_ms='decompressed.ms'):
+def decompress_visdata(zarr_path, output_column,output_ms):
     """
     Decompress visibility data from a Zarr file.
     
@@ -73,6 +73,7 @@ def decompress_visdata(zarr_path, output_column='DATA',output_ms='decompressed.m
     antenna = xr.open_zarr(zarr_path,group='ANTENNA')
     flag_row_zarr = xr.open_zarr(zarr_path,group='FLAG_ROW')
     flag_zarr = xr.open_zarr(zarr_path,group='FLAG')
+    
     
     #Shape and chunk of the data.
     shape = maintable.attrs['shape']
@@ -143,6 +144,43 @@ def decompress_visdata(zarr_path, output_column='DATA',output_ms='decompressed.m
                                 }) 
     })      
     
+    if "WEIGHT" in zarr_open.group_keys():
+        weight_zarr = xr.open_zarr(zarr_path,group='WEIGHT')
+        U_w = weight_zarr.U_w.values
+        S_w = weight_zarr.S_w.values
+        WT_w = weight_zarr.WT_w.values
+        
+        weights = reconstruction(U_w,S_w,WT_w)
+
+        maintable = maintable.assign(**{
+        "WEIGHT": xr.DataArray((weights), 
+                                    dims=("row", "corr"),
+                                    coords={
+                                        "row": np.arange(nrow),
+                                        "corr": np.arange(ncorr)
+                                    }) 
+        })    
+    
+    elif "WEIGHT_SPECTRUM" in zarr_open.group_keys():
+        weight_zarr = xr.open_zarr(zarr_path,group='WEIGHT_SPECTRUM')
+        U_w = weight_zarr.U_w.values
+        S_w = weight_zarr.S_w.values
+        WT_w = weight_zarr.WT_w.values
+        
+        weights = reconstruction(U_w,S_w,WT_w)
+
+        maintable = maintable.assign(**{
+        "WEIGHT_SPECTRUM": xr.DataArray((weights), 
+                                    dims=("row","chan", "corr"),
+                                    coords={
+                                        "row": np.arange(nrow),
+                                        "chan":np.arange(nchan),
+                                        "corr": np.arange(ncorr)
+                                    }) 
+        })    
+        
+    else:
+        raise ValueError(f"There is no WEIGHT or WEIGHT_SPECTRUM column in {zarr_path}.")
     
     #Finally, write the MS.
     write_main = xds_to_table(maintable, output_ms)

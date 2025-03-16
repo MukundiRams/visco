@@ -5,11 +5,13 @@ inputs:
     dtype: str
     required: true
     default: null
+    abbreviation: zp
 
   output_column:
     info: The column to be used.
     dtype: str
     default: 'DATA'
+    abbreviation: outcol
 
 
   ms:

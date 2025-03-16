@@ -76,3 +76,8 @@ flagvalue:
   info: The flag value to be used.
   dtype: float
   default: 0.0
+
+weightcr:
+  info: The rank to be used on the WEIGHT column.
+  dtype: int
+  default: 1
