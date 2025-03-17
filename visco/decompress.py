@@ -1,13 +1,12 @@
 from omegaconf import OmegaConf
 import zarr
 import numpy as np
-import dask, daskms
+import dask
 import numpy as np
 from daskms import xds_to_table
 import xarray as xr
 import visco
 import dask.array as da
-from casacore.tables import table
 log = visco.get_logger(name="VISCO")
 import logging
 from tqdm.dask import TqdmCallback
@@ -144,34 +143,19 @@ def decompress_visdata(zarr_path, output_column,output_ms):
                                 }) 
     })      
     
-    if "WEIGHT" in zarr_open.group_keys():
-        weight_zarr = xr.open_zarr(zarr_path,group='WEIGHT')
-        U_w = weight_zarr.U_w.values
-        S_w = weight_zarr.S_w.values
-        WT_w = weight_zarr.WT_w.values
-        
-        weights = reconstruction(U_w,S_w,WT_w)
 
-        maintable = maintable.assign(**{
-        "WEIGHT": xr.DataArray((weights), 
-                                    dims=("row", "corr"),
-                                    coords={
-                                        "row": np.arange(nrow),
-                                        "corr": np.arange(ncorr)
-                                    }) 
-        })    
-    
-    elif "WEIGHT_SPECTRUM" in zarr_open.group_keys():
+    if "WEIGHT_SPECTRUM" in zarr_open.group_keys():
         weight_zarr = xr.open_zarr(zarr_path,group='WEIGHT_SPECTRUM')
         U_w = weight_zarr.U_w.values
         S_w = weight_zarr.S_w.values
         WT_w = weight_zarr.WT_w.values
         
         weights = reconstruction(U_w,S_w,WT_w)
-        weights = weights.reshape(nrow,nchan,ncorr)
+        weights_expanded = np.expand_dims(weights,axis=-1)
+        final_weights = np.tile(weights_expanded,(1,1,ncorr))
 
         maintable = maintable.assign(**{
-        "WEIGHT_SPECTRUM": xr.DataArray((weights), 
+        "WEIGHT_SPECTRUM": xr.DataArray((final_weights), 
                                     dims=("row","chan", "corr"),
                                     coords={
                                         "row": np.arange(nrow),
@@ -180,8 +164,6 @@ def decompress_visdata(zarr_path, output_column,output_ms):
                                     }) 
         })    
         
-    else:
-        raise ValueError(f"There is no WEIGHT or WEIGHT_SPECTRUM column in {zarr_path}.")
     
     #Finally, write the MS.
     write_main = xds_to_table(maintable, output_ms)

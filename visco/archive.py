@@ -7,6 +7,7 @@ from daskms import xds_from_table
 import numpy as np
 from copy import copy
 from tqdm.dask import TqdmCallback
+from tqdm import tqdm
 from visco.utilities import ObjDict
 import visco
 log = visco.get_logger(name="VISCO")
@@ -168,11 +169,11 @@ def decompose(ms,correlation, fieldid,ddid,scan,
         nbaselines = len(baselines)
              
     else:
+        baselines = np.unique([(a1, a2) for a1, a2 in zip(ant1,ant2) if a1 != a2],axis=0)
         #If there are autocorrelations, which probably will never happen, consider it.
         if autocorrelation:
             baselines = np.unique(list(zip(ant1,ant2)),axis=0)
-        else:
-            baselines = np.unique([(a1, a2) for a1, a2 in zip(ant1,ant2) if a1 != a2],axis=0)
+
         nbaselines = baselines.shape[0]
     
     corr_list = []
@@ -192,6 +193,9 @@ def decompose(ms,correlation, fieldid,ddid,scan,
     vis_dict = {}
     
     #Go through all the baselines.
+    baseline_total = len(baselines)*len(corr_list_user)
+    baseline_progress = tqdm(total=baseline_total, desc="Decomposing the data.")
+    
     for bx,(antenna1,antenna2) in enumerate(baselines):
         
         vis_dict[bx] = {}
@@ -231,10 +235,11 @@ def decompose(ms,correlation, fieldid,ddid,scan,
                 "corr": corr_type,
             
             })
+            baseline_progress.update(1)
             
             
-            log.info(f"Decomposing visibility data for baseline {ant1name}-{ant2name}"
-                     f" and correlation {corr_type}")
+            # log.info(f"Decomposing visibility data for baseline {ant1name}-{ant2name}"
+            #          f" and correlation {corr_type}")
     
     return vis_dict
 
@@ -312,6 +317,7 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     elif compressionrank is None and decorrelation is None:
         raise ValueError("Either 'compressionrank' or 'decorrelation' must be provided.")
     
+    
     #Open the tables
     maintable = openms(ms,query = f"FIELD_ID={fieldid} AND DATA_DESC_ID={ddid} AND SCAN_NUMBER={scan}")
     mtab = openms(ms)
@@ -330,16 +336,18 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     log.info(f"The full rank of the data is {fullrank}.")
     
     #Get the decompositions.
+    log.info("Decomposing the data...")
     vis_data = decompose(ms=ms, correlation=correlation, fieldid=fieldid,
                          ddid=ddid, scan=scan, column=column,
                        autocorrelation=autocorrelation,antlist=antlist, flagvalue=flagvalue, 
                        maintab=mtab,fieldtab=fld_table,anttab=ant_table,poltab=pol_table)
-    
+
     
     #The path to the Zarr file containing the compression results
     zarr_output_path = os.path.join(os.getcwd(), "zarr-output", f"{outfilename}")
     
     #Store the main table in the zarr file.
+    log.info(f"Writing the Main Table to {zarr_output_path}...")
     ds = xr.Dataset(
     {
         "ANTENNA1": (("row"), maintable.ANTENNA1.values),
@@ -392,38 +400,9 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     )
     
     ds_flag.to_zarr(zarr_output_path, group="FLAG", mode="w")
-    
-    
-    
-    #if the weight spetrum column exists, the weights will be 3 dimensional can compress 
-    #same as data.
-    if "WEIGHT_SPECTRUM" in maintable.data_vars:
-        weights = maintable.WEIGHT_SPECTRUM.data
-        weights = weights.reshape(weights.shape[0],weights.shape[1]*weights.shape[2])
-        group_path_weight = f"WEIGHT_SPECTRUM"
-    #else, the weights wont be compressed per correlation.
-    else:
-        weights = maintable.WEIGHT.data
-        group_path_weight = f"WEIGHT"
-        
-    U_w, S_w, WT_w = da.linalg.svd(weights)
-
-    ds_weight = xr.Dataset(
-            {
-            "U_w": (("time", "mode"), U_w[:, :weightcr].compute()), 
-            "S_w": (("mode",), S_w[:weightcr].compute()),
-            "WT_w": (("mode", "channel"), WT_w[:weightcr, :].compute()),
-            },
-            coords={
-            "time": np.arange(U_w.shape[0]),
-            "mode": np.arange(S_w.shape[0])[:weightcr],
-            "channel": np.arange(WT_w.shape[1]),
-            },
-            )
-
-    ds_weight.to_zarr(zarr_output_path, group=group_path_weight, mode="w")
 
 
+    log.info(f"Writing the SPECTRAL_WINDOW table...")
     ds_spw = xr.Dataset(
         {
             "CHAN_WIDTH":(("row","chan"),spw_table.CHAN_WIDTH.values),
@@ -445,6 +424,7 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     ds_spw.to_zarr(zarr_output_path, group="SPECTRAL_WINDOW", mode="w")
     
     
+    log.info(f"Writing the POLARIZATION table...")
     ds_pol = xr.Dataset(
         {
             "CORR_TYPE":(("row","corr"),pol_table.CORR_TYPE.values),
@@ -460,6 +440,7 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     
     ds_pol.to_zarr(zarr_output_path, group="POLARIZATION", mode="w") 
     
+    log.info(f"Writing the FIELD table...")
     ds_fld = xr.Dataset(
         {
            "PHASE_DIR":(("row", "field-poly", "field-dir"),fld_table.PHASE_DIR.values),
@@ -475,7 +456,7 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     
     ds_fld.to_zarr(zarr_output_path, group="FIELD", mode="w")
     
-    
+    log.info(f"Writing the POINTING table...")
     ds_pointing = xr.Dataset(
         {
           "TARGET":(("row", "point-poly", "radec"),pntng_table.TARGET.values),
@@ -495,7 +476,7 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     
     ds_pointing.to_zarr(zarr_output_path, group="POINTING", mode="w")
 
-    
+    log.info(f"Writing the ANTENNA table...")
     ds_ant = xr.Dataset(
         {
            "DISH_DIAMETER":(("row"),ant_table.DISH_DIAMETER.values),
@@ -512,9 +493,33 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     
     ds_ant.to_zarr(zarr_output_path, group="ANTENNA", mode="w")
     
+    baseline_total = len(vis_data) * len(correlation.split(','))
+    baseline_progress = tqdm(total=baseline_total, desc="Compressing and storing the data.")
+    
     #If decorrelation is provided, compute the required singular values for each baselines
     #based on the desired signal loss.
     if decorrelation is not None:
+        
+        #if the weight spectrum column is available, compress it using SVD
+        #use the weightcr if using decorrelation.
+        if "WEIGHT_SPECTRUM" in maintable.data_vars:
+            weights = maintable.WEIGHT_SPECTRUM.data[:,:,0]
+            group_path_weight = f"WEIGHT_SPECTRUM"
+            U_w, S_w, WT_w = da.linalg.svd(weights)
+            ds_weight = xr.Dataset(
+                    {
+                    "U_w": (("time", "mode"), U_w[:, :weightcr].compute()), 
+                    "S_w": (("mode",), S_w[:weightcr].compute()),
+                    "WT_w": (("mode", "channel"), WT_w[:weightcr, :].compute()),
+                    },
+                    coords={
+                    "time": np.arange(U_w.shape[0]),
+                    "mode": np.arange(S_w.shape[0])[:weightcr],
+                    "channel": np.arange(WT_w.shape[1]),
+                    },
+                    )
+
+            ds_weight.to_zarr(zarr_output_path, group=group_path_weight, mode="w")
         
         #Go through all the baselines and correlations
         for bli in vis_data:
@@ -533,7 +538,6 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
                 if n == 0:
                     n = len(singvals)
 
-                log.info(f"Baseline: {baseline_key}, correlation: {corr}, n = {n}")
                 m, n_orig = vis_data[bli][corr].shape
                 baseline_filter = vis_data[bli]["baseline_filter"]
    
@@ -556,15 +560,37 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
                 group_path = f"DATA/{baseline_key}/{corr}"
                 ds_decomp.to_zarr(zarr_output_path, group=group_path, mode="w")
                 
+                baseline_progress.update(1)
+                
     
     #If compressionrank is given, use it uniformly across all the baselines.
     elif compressionrank is not None:
+        
+        #if using compression rank, use the given rank to compress the weight spectrum column
+        if "WEIGHT_SPECTRUM" in maintable.data_vars:
+            weights = maintable.WEIGHT_SPECTRUM.data[:,:,0]
+            group_path_weight = f"WEIGHT_SPECTRUM"
+            U_w, S_w, WT_w = da.linalg.svd(weights)
+            ds_weight = xr.Dataset(
+                    {
+                    "U_w": (("time", "mode"), U_w[:, :compressionrank].compute()), 
+                    "S_w": (("mode",), S_w[:compressionrank].compute()),
+                    "WT_w": (("mode", "channel"), WT_w[:compressionrank, :].compute()),
+                    },
+                    coords={
+                    "time": np.arange(U_w.shape[0]),
+                    "mode": np.arange(S_w.shape[0])[:compressionrank],
+                    "channel": np.arange(WT_w.shape[1]),
+                    },
+                    )
+
+            ds_weight.to_zarr(zarr_output_path, group=group_path_weight, mode="w")
     
         for bli in vis_data:
             ant1name = vis_data[bli]["ant1name"]
             ant2name = vis_data[bli]["ant2name"]
             baseline_key = f"{ant1name}-{ant2name}"
-             
+            
             for corr in correlation.split(','):
                 U, singvals, WT = vis_data[bli][corr].data
                 m, n = vis_data[bli][corr].shape
@@ -591,51 +617,11 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
                 
                 ds_decomp.to_zarr(zarr_output_path, group=group_path, mode="w")
                 
-                #If the weight spectrum exists, compress same way as the data column, per correlation.
-                if "WEIGHT_SPECTRUM" in maintable.data_vars:
-                    ds_weight = xr.Dataset(
-                    {
-                    "U_w": (("time", "mode"), U_w[:, :compressionrank].compute()), 
-                    "S_w": (("mode",), S_w[:compressionrank].compute()),
-                    "WT_w": (("mode", "channel"), WT_w[:compressionrank, :].compute()),
-                    },
-                    coords={
-                    "time": np.arange(U_w.shape[0]),
-                    "mode": np.arange(S_w.shape[0])[:compressionrank],
-                    "channel": np.arange(WT_w.shape[1]),
-                    },
-                    attrs={
-                    "baseline_filter": baseline_filter.tolist(),
-                    "corr": corr,
-                    },
-                    )
-                    group_path_weight = f"WEIGHT_SPECTRUM/{baseline_key}/{corr}"
-                    
-                    #else, compress the weight column differently using different compression rank
-                else:
-                    ds_weight = xr.Dataset(
-                    {
-                    "U_w": (("time", "mode"), U_w[:, :weightcr].compute()), 
-                    "S_w": (("mode",), S_w[:weightcr].compute()),
-                    "WT_w": (("mode", "channel"), WT_w[:weightcr, :].compute()),
-                    },
-                    coords={
-                    "time": np.arange(U_w.shape[0]),
-                    "mode": np.arange(S_w.shape[0])[:weightcr],
-                    "channel": np.arange(WT_w.shape[1]),
-                    },
-                    attrs={
-                    "baseline_filter": baseline_filter.tolist(),
-                    "corr": corr,
-                    },
-                    )
-                    
-                    group_path = f"WEIGHT/{baseline_key}/{corr}"
+                baseline_progress.update(1)
                 
-                ds_weight.to_zarr(zarr_output_path, group=group_path_weight, mode="w")
+    baseline_progress.close()
+    log.info(f"Data successfully stored at {zarr_output_path}")
     
-        log.info(f"Data successfully stored at {zarr_output_path}")
-     
 
 def compress_bits(data_array,axis=None,dim=1):
     """"

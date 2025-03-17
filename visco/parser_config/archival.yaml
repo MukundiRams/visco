@@ -78,7 +78,6 @@ inputs:
   antlist:
     info: The list of antennas to be used.
     dtype: list
-    default: None
     abbreviation: al
    
 
@@ -89,7 +88,7 @@ inputs:
     abbreviation: fv
 
   weightcr:
-    info: The number of singular values or rank to use on the WEIGHT column.
+    info: The number of singular values or rank to use on the WEIGHT_SPECTRUM column if using BDSVD.
     dtype: int
     default: 1
     abbreviation: wcr
