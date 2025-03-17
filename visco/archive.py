@@ -242,10 +242,10 @@ def decompose(ms,correlation, fieldid,ddid,scan,
 
 
 
-def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
-                column='DATA', outfilename='compressed-data.zarr', compressionrank=None,
-                autocorrelation=False, decorrelation=None,
-                antlist=None, flagvalue=0):
+def archive_visdata(ms, correlation, fieldid, ddid, scan,
+                column, outfilename, compressionrank,
+                autocorrelation, decorrelation,
+                antlist, flagvalue, weightcr):
     
     """
     Compress the visibility data and store the decomposition components
@@ -297,6 +297,9 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
     
     decorrelation: float
     - The minimum signal loss percentage on each baseline.
+    
+    weightcr: int
+    - The number of singular values or rank to apply to the weight column.
     
     Returns
     ----
@@ -389,6 +392,37 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
     )
     
     ds_flag.to_zarr(zarr_output_path, group="FLAG", mode="w")
+    
+    
+    
+    #if the weight spetrum column exists, the weights will be 3 dimensional can compress 
+    #same as data.
+    if "WEIGHT_SPECTRUM" in maintable.data_vars:
+        weights = maintable.WEIGHT_SPECTRUM.data
+        weights = weights.reshape(weights.shape[0],weights.shape[1]*weights.shape[2])
+        group_path_weight = f"WEIGHT_SPECTRUM"
+    #else, the weights wont be compressed per correlation.
+    else:
+        weights = maintable.WEIGHT.data
+        group_path_weight = f"WEIGHT"
+        
+    U_w, S_w, WT_w = da.linalg.svd(weights)
+
+    ds_weight = xr.Dataset(
+            {
+            "U_w": (("time", "mode"), U_w[:, :weightcr].compute()), 
+            "S_w": (("mode",), S_w[:weightcr].compute()),
+            "WT_w": (("mode", "channel"), WT_w[:weightcr, :].compute()),
+            },
+            coords={
+            "time": np.arange(U_w.shape[0]),
+            "mode": np.arange(S_w.shape[0])[:weightcr],
+            "channel": np.arange(WT_w.shape[1]),
+            },
+            )
+
+    ds_weight.to_zarr(zarr_output_path, group=group_path_weight, mode="w")
+
 
     ds_spw = xr.Dataset(
         {
@@ -499,7 +533,7 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
                 if n == 0:
                     n = len(singvals)
 
-                log.info(f"Baseline: {baseline_key}, n: {n}")
+                log.info(f"Baseline: {baseline_key}, correlation: {corr}, n = {n}")
                 m, n_orig = vis_data[bli][corr].shape
                 baseline_filter = vis_data[bli]["baseline_filter"]
    
@@ -556,6 +590,49 @@ def archive_visdata(ms, correlation='XX,XY,YX,YY', fieldid=0, ddid=0, scan=1,
                 group_path = f"DATA/{baseline_key}/{corr}"
                 
                 ds_decomp.to_zarr(zarr_output_path, group=group_path, mode="w")
+                
+                #If the weight spectrum exists, compress same way as the data column, per correlation.
+                if "WEIGHT_SPECTRUM" in maintable.data_vars:
+                    ds_weight = xr.Dataset(
+                    {
+                    "U_w": (("time", "mode"), U_w[:, :compressionrank].compute()), 
+                    "S_w": (("mode",), S_w[:compressionrank].compute()),
+                    "WT_w": (("mode", "channel"), WT_w[:compressionrank, :].compute()),
+                    },
+                    coords={
+                    "time": np.arange(U_w.shape[0]),
+                    "mode": np.arange(S_w.shape[0])[:compressionrank],
+                    "channel": np.arange(WT_w.shape[1]),
+                    },
+                    attrs={
+                    "baseline_filter": baseline_filter.tolist(),
+                    "corr": corr,
+                    },
+                    )
+                    group_path_weight = f"WEIGHT_SPECTRUM/{baseline_key}/{corr}"
+                    
+                    #else, compress the weight column differently using different compression rank
+                else:
+                    ds_weight = xr.Dataset(
+                    {
+                    "U_w": (("time", "mode"), U_w[:, :weightcr].compute()), 
+                    "S_w": (("mode",), S_w[:weightcr].compute()),
+                    "WT_w": (("mode", "channel"), WT_w[:weightcr, :].compute()),
+                    },
+                    coords={
+                    "time": np.arange(U_w.shape[0]),
+                    "mode": np.arange(S_w.shape[0])[:weightcr],
+                    "channel": np.arange(WT_w.shape[1]),
+                    },
+                    attrs={
+                    "baseline_filter": baseline_filter.tolist(),
+                    "corr": corr,
+                    },
+                    )
+                    
+                    group_path = f"WEIGHT/{baseline_key}/{corr}"
+                
+                ds_weight.to_zarr(zarr_output_path, group=group_path_weight, mode="w")
     
         log.info(f"Data successfully stored at {zarr_output_path}")
      

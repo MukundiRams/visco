@@ -39,7 +39,8 @@ def runit(**kwargs):
     outfilename = opts.outfilename
     compressionrank = opts.compressionrank
     decorrelation = opts.decorrelation
+    weightcr = opts.weightcr
     archive.archive_visdata(ms, correlation, fieldid, ddid, scan,
                       column, outfilename, compressionrank,
-                      autocorrelation, decorrelation, antlist, flagvalue)
+                      autocorrelation, decorrelation, antlist, flagvalue,weightcr)
     
