@@ -168,6 +168,7 @@ def decompress_visdata(zarr_path, output_column,output_ms):
         WT_w = weight_zarr.WT_w.values
         
         weights = reconstruction(U_w,S_w,WT_w)
+        weights = weights.reshape(nrow,nchan,ncorr)
 
         maintable = maintable.assign(**{
         "WEIGHT_SPECTRUM": xr.DataArray((weights), 
@@ -251,28 +252,3 @@ def decompress_bits(data_array,dim=1, nrow=None,nchan=None,ncorr=None):
         undone_data = undone_data[:nrow*nchan*ncorr]
         unpacked_data = undone_data.reshape(nrow,nchan,ncorr)
     return unpacked_data    
-
-def ms_addrow(ms,subtable,nrows):
-    
-    subtab = table(f"{ms}::{subtable}",
-                    readonly=False, lockoptions='user', ack=False)
-    try:
-        subtab.lock(write=True)
-        subtab.addrows(nrows)
-        
-    finally:
-        subtab.unlock()
-        subtab.close()
-        
-       
-def ms_remrow(ms,subtable,row):
-    
-    subtab = table(f"{ms}::{subtable}",
-                    readonly=False, lockoptions='user', ack=False)
-    try:
-        subtab.lock(write=True)
-        subtab.removerows(row)
-        
-    finally:
-        subtab.unlock()
-        subtab.close()
