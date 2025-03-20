@@ -18,6 +18,6 @@ inputs:
     info: The output Measurement Set file name.
     dtype: str
     default: decompressed.ms
-
+    abbreviation: ms
 outputs:
   {}

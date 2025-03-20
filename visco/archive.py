@@ -326,10 +326,14 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     pol_table = openms(ms,"POLARIZATION")
     fld_table = openms(ms,"FIELD")
     pntng_table = openms(ms,"POINTING")
+    feed_table = openms(ms,"FEED")
+    obs_table = openms(ms,"OBSERVATION")
+    dd_table = openms(ms,"DATA_DESCRIPTION")
     pointing_chunks = pntng_table.chunks["row"][0]
     data_row_chunks = maintable.chunks["row"][0]
     
     compressed_data = copy(maintable[column].data)
+    len_corr = len(correlation.split(','))
     
     #Full rank of the data.
     fullrank = min(compressed_data.shape[0],compressed_data.shape[1])
@@ -359,24 +363,26 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
         "TIME_CENTROID": (("row"), maintable.TIME_CENTROID.values),
         "SCAN_NUMBER": (("row"), maintable.SCAN_NUMBER.values),
         "FIELD_ID": (("row"), maintable.FIELD_ID.values),
+        "WEIGHT":(("row","corr"), maintable.WEIGHT[:,:len_corr].values),
+        "SIGMA":(("row","corr"), maintable.SIGMA[:,:len_corr].values)
     },
     coords={
         "row": np.arange(len(maintable.ANTENNA1)),  
     },
     attrs={
-        "shape": compressed_data.shape,
+        "shape": compressed_data[:,:,:len_corr].shape,
         "chunks": compressed_data.chunks,
         "ROWID": maintable.ROWID.values,
         },
     )
-    
+
     #Writing to the zarr file.
     ds = ds.chunk({"row": data_row_chunks})
     ds.to_zarr(zarr_output_path, mode="w")
     
     #Compress the flags using numpy packbits. Groups 8 booleans into one interger.
     orig_flags_row = maintable.FLAG_ROW.values
-    orig_flags = maintable.FLAG.values
+    orig_flags = maintable.FLAG[:,:,:len_corr].values
     packed_flags_row = compress_bits(orig_flags_row,dim=1)
     packed_flags = compress_bits(orig_flags,dim=3)
     
@@ -413,7 +419,10 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
             "REF_FREQUENCY":(("row"),spw_table.REF_FREQUENCY.values),
             "MEAS_FREQ_REF":(("row"),spw_table.MEAS_FREQ_REF.values),
             "TOTAL_BANDWIDTH":(("row"),spw_table.TOTAL_BANDWIDTH.values),
-            "FLAG_ROW":(("row"),spw_table.FLAG_ROW.values)
+            "FLAG_ROW":(("row"),spw_table.FLAG_ROW.values),
+            "FREQ_GROUP_NAME":(("row"),spw_table.FREQ_GROUP_NAME.values),
+            "NET_SIDEBAND":(("row"),spw_table.NET_SIDEBAND.values)
+            
         },
         coords={
             "row": np.arange((spw_table.CHAN_WIDTH.shape[0])),
@@ -445,7 +454,9 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
         {
            "PHASE_DIR":(("row", "field-poly", "field-dir"),fld_table.PHASE_DIR.values),
            "DELAY_DIR":(("row", "field-poly", "field-dir"),fld_table.DELAY_DIR.values),
-           "REFERENCE_DIR":(("row", "field-poly", "field-dir"),fld_table.REFERENCE_DIR.values)
+           "REFERENCE_DIR":(("row", "field-poly", "field-dir"),fld_table.REFERENCE_DIR.values),
+           "TIME":(("row"),fld_table.TIME.values),
+           "SOURCE_ID":(("row"),fld_table.SOURCE_ID.values)
         },
         coords={
             "row": np.arange((fld_table.PHASE_DIR.shape[0])),
@@ -492,6 +503,63 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
     )
     
     ds_ant.to_zarr(zarr_output_path, group="ANTENNA", mode="w")
+    
+    
+    log.info(f"Writing the FEED table...")
+    ds_feed = xr.Dataset(
+        {
+           "ANTENNA_ID":(("row"),feed_table.ANTENNA_ID.values),
+           "BEAM_ID":(("row"),feed_table.BEAM_ID.values),
+           "BEAM_OFFSET":(("row","receptors","radec"),feed_table.BEAM_OFFSET.values),
+           "INTERVAL":(("row"),feed_table.INTERVAL.values),
+            "NUM_RECEPTORS":(("row"),feed_table.NUM_RECEPTORS.values),
+            "SPECTRAL_WINDOW_ID":(("row"),feed_table.SPECTRAL_WINDOW_ID.values),
+            "POLARIZATION_TYPE":(("row","receptors"),feed_table.POLARIZATION_TYPE.values) ,
+            "POL_RESPONSE":(("row","receptors","receptors-2"),feed_table.POL_RESPONSE.values)
+        },
+        coords={
+            "row": np.arange((feed_table.ANTENNA_ID.shape[0])),
+            "receptors": np.arange((feed_table.BEAM_OFFSET.shape[1])),
+            "radec": np.arange((feed_table.BEAM_OFFSET.shape[2])),
+            "receptors-2": np.arange((feed_table.POL_RESPONSE.shape[2]))
+        }
+    )
+    ds_feed.to_zarr(zarr_output_path, group="FEED", mode="w")
+    
+    
+    
+    log.info(f"Writing the OBSERVATION table...")
+    ds_obs = xr.Dataset(
+        {
+           "TIME_RANGE":(("row","obs-exts"),obs_table.TIME_RANGE.values),
+           "OBSERVER":(("row"),obs_table.OBSERVER.values),
+           "TELESCOPE_NAME":(("row"),obs_table.TELESCOPE_NAME.values),
+          
+        },
+        coords={
+            "row": np.arange((obs_table.TIME_RANGE.shape[0])),
+            "obs-exts": np.arange((obs_table.TIME_RANGE.shape[1]))
+        }
+    )
+    
+    ds_obs.to_zarr(zarr_output_path, group="OBSERVATION", mode="w")
+    
+    log.info(f"Writing the DATA_DESCRIPTION table...")
+    ds_dd = xr.Dataset(
+        {
+           "FLAG_ROW":(("row"),dd_table.FLAG_ROW.values),
+           "POLARIZATION_ID":(("row"),dd_table.POLARIZATION_ID.values),
+           "SPECTRAL_WINDOW_ID":(("row"),dd_table.SPECTRAL_WINDOW_ID.values),
+          
+        },
+        coords={
+            "row": np.arange((dd_table.FLAG_ROW.shape[0])),
+        }
+    )
+    
+    ds_dd.to_zarr(zarr_output_path, group="DATA_DESCRIPTION", mode="w")
+    
+    
     
     baseline_total = len(vis_data) * len(correlation.split(','))
     baseline_progress = tqdm(total=baseline_total, desc="Compressing and storing the data.")
@@ -540,7 +608,8 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
 
                 m, n_orig = vis_data[bli][corr].shape
                 baseline_filter = vis_data[bli]["baseline_filter"]
-   
+
+                log.info(f"baseline:{baseline_key},corr:{corr}, n:{n}")
                 ds_decomp = xr.Dataset(
                 {
                 "U": (("time", "mode"), U[:, :n].compute()),  
@@ -596,6 +665,7 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
                 m, n = vis_data[bli][corr].shape
                 baseline_filter = vis_data[bli]["baseline_filter"]
                 
+                log.info(f"baseline:{baseline_key},corr:{corr},n{compressionrank}")
                 ds_decomp = xr.Dataset(
                 {
                 "U": (("time", "mode"), U[:, :compressionrank].compute()), 
@@ -671,10 +741,3 @@ def compress_bits(data_array,axis=None,dim=1):
             packed_data = np.packbits(data_array,axis=None)
         
     return packed_data
-
-    
-def compress_quantized(weight_array):
-     
-    quantized = weight_array.astype(np.float16)
-    
-    return quantized

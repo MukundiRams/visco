@@ -6,6 +6,7 @@ import numpy as np
 from daskms import xds_to_table
 import xarray as xr
 import visco
+from tqdm import tqdm
 import dask.array as da
 log = visco.get_logger(name="VISCO")
 import logging
@@ -70,6 +71,9 @@ def decompress_visdata(zarr_path, output_column,output_ms):
     pol = xr.open_zarr(zarr_path,group='POLARIZATION')
     pointing = xr.open_zarr(zarr_path,group='POINTING')
     antenna = xr.open_zarr(zarr_path,group='ANTENNA')
+    feed = xr.open_zarr(zarr_path,group='FEED')
+    obs = xr.open_zarr(zarr_path,group='OBSERVATION')
+    dd = xr.open_zarr(zarr_path,group='DATA_DESCRIPTION')
     flag_row_zarr = xr.open_zarr(zarr_path,group='FLAG_ROW')
     flag_zarr = xr.open_zarr(zarr_path,group='FLAG')
     
@@ -81,8 +85,17 @@ def decompress_visdata(zarr_path, output_column,output_ms):
     #Initialize zeros.
     decompressed_data = da.zeros(shape=shape,dtype=complex,chunks=chunks)
     
+    
     data_group_zarr = zarr_open['DATA']
     baseline_keys = list(data_group_zarr.group_keys())
+    
+    total_operations = 0
+    for baseline_key in baseline_keys:
+        baseline_x = data_group_zarr[baseline_key]
+        corr_keys = list(baseline_x.group_keys())
+        total_operations += len(corr_keys)
+    
+    baseline_progress = tqdm(total=total_operations, desc="Reconstructing the data.")
     
     #Go through all the baselines and correlations.
     for baseline_key in baseline_keys:
@@ -101,6 +114,9 @@ def decompress_visdata(zarr_path, output_column,output_ms):
             reconstructed_data = reconstruction(U, S, WT)
             
             decompressed_data[baseline_filter, :, ci] = reconstructed_data
+            
+            baseline_progress.update(1)
+            
      
     nrow =  decompressed_data.shape[0] 
     nchan = decompressed_data.shape[1]
@@ -119,7 +135,7 @@ def decompress_visdata(zarr_path, output_column,output_ms):
 
     #Decompress the flag data and write it to the maintable dataset.         
     flag_row_data = flag_row_zarr.FLAG_ROW.values
-    flag_row_data_unpacked = decompress_bits(flag_row_data,dim=1)  
+    flag_row_data_unpacked = decompress_bits(flag_row_data,dim=1,nrow=nrow)  
     
     maintable = maintable.assign(**{
     "FLAG_ROW": xr.DataArray(da.from_array(flag_row_data_unpacked,chunks=chunks), 
@@ -196,6 +212,21 @@ def decompress_visdata(zarr_path, output_column,output_ms):
     with TqdmCallback(desc=f'Writing POINTING table to {output_ms}'):
         
         dask.compute(write_pointing)
+        
+    write_feed = xds_to_table(feed, f"{output_ms}::FEED")
+    with TqdmCallback(desc=f'Writing FEED table to {output_ms}'):
+        
+        dask.compute(write_feed)
+        
+    write_obs = xds_to_table(obs, f"{output_ms}::OBSERVATION")
+    with TqdmCallback(desc=f'Writing OBSERVATION table to {output_ms}'):
+        
+        dask.compute(write_obs)
+        
+    write_dd = xds_to_table(dd, f"{output_ms}::DATA_DESCRIPTION")
+    with TqdmCallback(desc=f'Writing DATA_DESCRIPTION table to {output_ms}'):
+        
+        dask.compute(write_dd)
         
   
     
