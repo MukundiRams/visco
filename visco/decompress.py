@@ -12,6 +12,7 @@ log = visco.get_logger(name="VISCO")
 import logging
 from tqdm.dask import TqdmCallback
 logging.getLogger("daskms").setLevel(logging.ERROR)
+logging.getLogger('numcodecs').setLevel(logging.CRITICAL)
 
 #The correlation mapping.
 CORR_TYPES = OmegaConf.load(f"{visco.PCKGDIR}/ms_corr_types.yaml").CORR_TYPES

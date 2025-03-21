@@ -13,6 +13,7 @@ import visco
 log = visco.get_logger(name="VISCO")
 import logging
 logging.getLogger("daskms").setLevel(logging.ERROR)
+logging.getLogger('numcodecs').setLevel(logging.CRITICAL)
 
 from omegaconf import OmegaConf
 
@@ -609,7 +610,7 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
                 m, n_orig = vis_data[bli][corr].shape
                 baseline_filter = vis_data[bli]["baseline_filter"]
 
-                log.info(f"baseline:{baseline_key},corr:{corr}, n:{n}")
+        
                 ds_decomp = xr.Dataset(
                 {
                 "U": (("time", "mode"), U[:, :n].compute()),  
@@ -665,7 +666,6 @@ def archive_visdata(ms, correlation, fieldid, ddid, scan,
                 m, n = vis_data[bli][corr].shape
                 baseline_filter = vis_data[bli]["baseline_filter"]
                 
-                log.info(f"baseline:{baseline_key},corr:{corr},n{compressionrank}")
                 ds_decomp = xr.Dataset(
                 {
                 "U": (("time", "mode"), U[:, :compressionrank].compute()), 
