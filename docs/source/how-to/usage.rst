@@ -16,7 +16,7 @@ For instance, if we wanted to compress radio interferometry data in an MS using 
 
 Note that ``--compressionrank`` is the rank or number of singular values that are retained across all the baselines duiring the compression. ``corr`` are the correlations to compress and store. The input MS is ``msfile.ms`` and the output ZARR file is ``compressed-data.zarr``.
 
-The other option is Baseline-Dependent SVD, which applies variable compression rank based on the baseline. For example, if we wanted to preserve at least :raw-math:`$$98\%$$` of the signal on each baseline, we would run the following command:
+The other option is Baseline-Dependent SVD, which applies variable compression rank based on the baseline. For example, if we wanted to preserve at least :raw-math:`98\%` of the signal on each baseline, we would run the following command:
 
 .. code-block:: bash
 
