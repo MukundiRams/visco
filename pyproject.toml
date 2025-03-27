@@ -27,6 +27,8 @@ decompression = "visco.parser_config.decompression:runit"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
+sphinx-rtd-theme = "^3.0.2"
+sphinx-autodoc-typehints = "<3.1.0"
 
 [build-system]
 requires = ["poetry-core"]
