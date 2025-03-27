@@ -7,15 +7,12 @@ version: 2
 # Set the version of Python and other tools you might need
 build:
   os: ubuntu-22.04
-  tools:
-    python: "3.10"
-
-# Install dependencies from requirements.txt
-python:
-  install:
-    - method: pip
-      path: .
-      
+  tools: {python: "3.10"}
+  jobs:
+    post_install:
+      - pip install poetry==1.4.0
+      - poetry config virtualenvs.create false
+      - poetry install --with docs
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
