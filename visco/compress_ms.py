@@ -8,8 +8,9 @@ import zarr
 import ast
 from itertools import combinations
 from daskms import xds_from_table
-from dask import delayed
+from dask import delayed,compute
 import dask
+from tqdm import tqdm
 from tqdm.dask import TqdmCallback
 import visco
 log = visco.get_logger(name="VISCO")
@@ -101,7 +102,7 @@ def write_table_to_zarr(ms_path:str, zarr_path:str,
                 encoding=encoding
             )
         )
-
+    
     dask.compute(*writes)
 
    
@@ -223,7 +224,7 @@ def apply_svd(visdata:da.Array,
     if flagvalue:
         visdata = da.where(visdata == flags, flagvalue, visdata)
     
-    U,S,Vt = da.linalg.svd(visdata)
+    U,S,Vt = da.linalg.svd(da.from_array(visdata))
     
     if compressionrank:
         n = compressionrank
@@ -243,11 +244,13 @@ def apply_svd(visdata:da.Array,
 
 
 def compress_visdata(zarr_output_path:str,
+                     compressor:str,
                      correlation:str,
                      fieldid:int,
                      ddid:int,
                      scan:int,
                      column:str,
+                     outcolumn:str,
                      use_model_data:bool,
                      decorrelation:float=None,
                      compressionrank:int=None, 
@@ -273,17 +276,17 @@ def compress_visdata(zarr_output_path:str,
     """
     
     
-    ds = xr.open_zarr(zarr_output_path, consolidated=True)
-    ds_pol = xr.open(zarr_output_path, consolidated=True, group='POLARIZATION')
+    ds = xr.open_zarr(zarr_output_path, consolidated=True,group='MAIN')
+    ds_pol = xr.open_zarr(zarr_output_path, consolidated=True, group='POLARIZATION')
     ds_ant = xr.open_zarr(zarr_output_path, consolidated=True, group='ANTENNA')
     
-    scans = da.unique(ds.SCAN_NUMBER.values)
-    ddids = da.unique(ds.DATA_DESC_ID.values)
-    fields = da.unique(ds.FIELD_ID.values)
+    scans = np.unique(ds.SCAN_NUMBER.values)
+    ddids = np.unique(ds.DATA_DESC_ID.values)
+    fields = np.unique(ds.FIELD_ID.values)
     corr_types = ds_pol.CORR_TYPE.values
     
     if scan not in scans:
-        raise ValueError(f"Invalid SCAN_NUMBER {scan}. Available scans are: {scans.compute().tolist()}")
+        raise ValueError(f"Invalid SCAN_NUMBER {scan}. Available scans are: {scans.tolist()}")
         
     
     if ddid not in ddids:
@@ -298,8 +301,7 @@ def compress_visdata(zarr_output_path:str,
     maintable = ds.where(
         (ds.SCAN_NUMBER == scan) & 
         (ds.DATA_DESC_ID == ddid) & 
-        (ds.FIELD_ID == fieldid), 
-        drop=True
+        (ds.FIELD_ID == fieldid)
     )
     
     ant1 = maintable.ANTENNA1.values
@@ -331,13 +333,16 @@ def compress_visdata(zarr_output_path:str,
         
     
     tasks = []
+    baseline_total = len(baselines)*len(corr_list_user)
+    baseline_progress = tqdm(total=baseline_total, desc="Decomposing the data.")
     
     for bx,(antenna1,antenna2) in enumerate(baselines):
         
-        baseline_mask = (maintable.ANTENNA1 == antenna1) & (maintable.ANTENNA2 == antenna2)
-        baseline_data = maintable.where(baseline_mask, drop=True)
+        antenna1 = int(antenna1)
+        antenna2 = int(antenna2)
+        baseline_mask = (ant1 == antenna1) & (ant2 == antenna2)
+        baseline_data = maintable.isel(row = baseline_mask)
 
-        
         
         ant1name = ds_ant.NAME.values[antenna1]
         ant2name = ds_ant.NAME.values[antenna2]
@@ -365,26 +370,28 @@ def compress_visdata(zarr_output_path:str,
         
             corr_type = CORR_TYPES_REVERSE[c]
             
-            save_path = Path(zarr_output_path) / f'baseline{bx}' / f'{ant1name}_{ant2name}' / f'{corr_type}'
-            save_task = delayed(write_svd_to_zarr)(task, save_path)
+            save_path = Path(zarr_output_path) / 'MAIN'/ f"{outcolumn}" / f'{ant1name}-{ant2name}' / f'{corr_type}'
+            save_task = delayed(write_svd_to_zarr)(task, save_path,compressor)
             tasks.append(save_task)
             
-    return task
+            baseline_progress.update(1)
+            
+    return tasks
 
 
-def write_svd_to_zarr(svd_result, path: Path):
+def write_svd_to_zarr(svd_result, path: Path,compressor:str):
     U, s, V = svd_result
     
     # Ensure output group exists
     store = zarr.DirectoryStore(str(path))
     root = zarr.group(store=store, overwrite=True)
     
-    root.create_dataset('U', data=U.compute(), chunks=True, compression='zstd')
-    root.create_dataset('S', data=s.compute(), chunks=True, compression='zstd')
-    root.create_dataset('V', data=V.compute(), chunks=True, compression='zstd')
+    root.create_dataset('U', data=U.compute(), chunks=True, compression=compressor)
+    root.create_dataset('S', data=s.compute(), chunks=True, compression=compressor)
+    root.create_dataset('V', data=V.compute(), chunks=True, compression=compressor)
     
 
-def compress_ms(ms_path:str, zarr_path:str,
+def compress_full_ms(ms_path:str, zarr_path:str,
                 consolidated:bool=True,
                 chunk_size_row:int=100000,
                 overwrite:bool=True,
@@ -395,6 +402,7 @@ def compress_ms(ms_path:str, zarr_path:str,
                 ddid:int=0,
                 scan:int=0,
                 column:str='DATA',
+                outcolumn:str='COMPRESSED_DATA',
                 use_model_data:bool=True,
                 decorrelation:float=None,
                 compressionrank:int=None, 
@@ -429,6 +437,8 @@ def compress_ms(ms_path:str, zarr_path:str,
         Scan number to filter by. Default is 0.
     column : str
         Column name for visibility data (e.g., 'DATA'). Default is 'DATA'.
+    outcolumn: str
+        Output column name for compressed data. Default is 'COMPRESSED_DATA'.
     use_model_data : bool
         Whether to use model data for compression. Default is True.
     decorrelation : float
@@ -444,7 +454,8 @@ def compress_ms(ms_path:str, zarr_path:str,
     -------
     """
     
-    zarr_output_path = os.path.join(os.getcwd(), "compression-output", f"{zarr_path}")
+    # zarr_output_path = os.path.join(os.getcwd(), "compression-output", f"{zarr_path}")
+    zarr_output_path = os.path.join(zarr_path)
     write_ms_to_zarr(ms_path=ms_path,
                     zarr_path=zarr_output_path,
                     consolidated=consolidated,
@@ -453,10 +464,23 @@ def compress_ms(ms_path:str, zarr_path:str,
                     compressor=compressor,
                     level=level)
     
-    tasks = delayed(compress_visdata)(ms_path=ms_path,
-                                      zarr_path=zarr_output_path,
-                                      correlation=correlation,
-                                      fieldid=fieldid,)
+    tasks = compress_visdata(
+                            zarr_output_path=zarr_output_path,
+                            compressor=compressor,
+                            correlation=correlation,
+                            fieldid=fieldid,
+                            ddid=ddid,
+                            scan=scan,
+                            column=column,
+                            outcolumn=outcolumn,
+                            use_model_data=use_model_data,
+                            decorrelation=decorrelation,
+                            compressionrank=compressionrank,
+                            flagvalue=flagvalue,
+                            antennas=antennas)
+    
+    with TqdmCallback(desc=f"Compressing the visibility data."):
+        dask.compute(*tasks)
     
 
              
