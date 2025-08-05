@@ -9,6 +9,7 @@ import ast
 from itertools import combinations
 from daskms import xds_from_table
 from dask import delayed,compute
+from scipy.interpolate import griddata
 import dask
 from tqdm import tqdm
 from tqdm.dask import TqdmCallback
@@ -18,7 +19,7 @@ import logging
 from omegaconf import OmegaConf
 logging.getLogger("daskms").setLevel(logging.ERROR)
 logging.getLogger('numcodecs').setLevel(logging.CRITICAL)
-
+import numcodecs
 from numcodecs import Blosc, Zstd, GZip
 
 CORR_TYPES = OmegaConf.load(f"{visco.PCKGDIR}/ms_corr_types.yaml").CORR_TYPES
@@ -183,10 +184,6 @@ def find_n_decorrelation(singular_values:np.ndarray, decorrelation:float)->int:
     return n
 
 def apply_svd(visdata:da.Array, 
-            flags:da.Array,
-            use_model_data:bool=None,
-            model_data:da.Array=None,
-            flagvalue:float=None,
             decorrelation:float=None,
             compressionrank:int=None):
     """
@@ -198,12 +195,6 @@ def apply_svd(visdata:da.Array,
         Visibility data for the baseline.
     flags : dask.array.Array
         Flags for the visibility data.
-    use_model_data : bool, optional
-        Whether to use model data to replace the flags.
-    model_data : dask.array.Array, optional
-        Model data to use if `use_model_data` is True.
-    flagvalue : float, optional
-        Value to replace flagged data with.
     decorrelation : float, optional
         Desired decorrelation level (0 to 1).
     compressionrank : int, optional
@@ -219,10 +210,6 @@ def apply_svd(visdata:da.Array,
         Right singular vectors.
     """
     
-    if use_model_data:
-        visdata = visdata.where(visdata == flags,model_data,visdata)
-    if flagvalue:
-        visdata = da.where(visdata == flags, flagvalue, visdata)
     
     U,S,Vt = da.linalg.svd(da.from_array(visdata))
     
@@ -242,19 +229,124 @@ def apply_svd(visdata:da.Array,
     return U, S, Vt
 
 
+def estimate_flagged_data(maintable: xr.Dataset) -> xr.Dataset:
+    """
+    Estimate the values of the flagged data in the visibilities by interpolating
+    over the uv-plane.
+
+    Parameters
+    ----------
+    maintable : xr.Dataset
+        Main xarray dataset containing visibilities, flags, UVW, and weights.
+
+    Returns
+    -------
+    xr.Dataset
+        Updated dataset with flagged values estimated and filled.
+    """
+    required_fields = ['FLAG', 'DATA', 'UVW', 'WEIGHT_SPECTRUM']
+    
+    if not all(key in maintable for key in required_fields):
+        raise ValueError(f"Input dataset missing required fields: {required_fields}")
+
+    
+    flags = maintable.FLAG.data          
+    visdata = maintable.DATA.data        
+    uvw = maintable.UVW.data.compute()   
+    weights = maintable.WEIGHT_SPECTRUM.data  
+
+    u = uvw[:, 0]
+    v = uvw[:, 1]
+
+    def interpolate_and_replace(vis, flag, weight, block_info=None):
+        
+        # Determine the slice range for this block
+        loc = block_info[0]['array-location'][0]
+        start, stop = loc
+        u_block = u[start:stop]
+        v_block = v[start:stop]
+
+        valid = ~flag
+        if valid.sum() < 3:
+            return vis
+
+        
+        u_valid = u_block[valid]
+        v_valid = v_block[valid]
+        vis_valid = vis[valid]
+        w_valid = weight[valid]
+
+        
+        flagged_uv = np.stack([u_block[flag], v_block[flag]], axis=-1)
+        interpolated = griddata(
+            (u_valid, v_valid),
+            vis_valid,
+            flagged_uv,
+            method='linear',
+            fill_value=0.0
+        )
+
+        
+        vis_out = vis.copy()
+        vis_out[flag] = interpolated
+        return vis_out
+
+    
+    def process_slice(vis_slice, flag_slice, weight_slice):
+        return da.map_blocks(
+            interpolate_and_replace,
+            vis_slice,
+            flag_slice,
+            weight_slice,
+            dtype=vis_slice.dtype,
+            block_info=True
+        )
+
+    nchan = visdata.shape[1]
+    npol = visdata.shape[2]
+
+    updated_visdata = da.stack([
+        da.stack([
+            process_slice(visdata[:, chan, pol], flags[:, chan, pol], weights[:, chan, pol])
+            for pol in range(npol)
+        ], axis=-1)
+        for chan in range(nchan)
+    ], axis=1)
+
+    updated_visdata = da.rechunk(updated_visdata,chunks=visdata.chunks)
+    # updated_ds = maintable.copy()
+    # updated_ds['DATA'].data = da.rechunk(updated_visdata,chunks=visdata.chunks)
+    return updated_visdata
+  
+def write_a_group_to_zarr(zarr_path:str,group:str,data:np.ndarray):
+    """
+    Write (updates) a group in the zarr store.
+    """
+    ds = xr.Dataset({
+        group:(("row"), data)
+        },
+        coords={
+            "row": np.arange(data.shape[0])
+        }
+    )
+    ds.to_zarr(zarr_path,group=f"MAIN",mode='a')
+
 
 def compress_visdata(zarr_output_path:str,
                      compressor:str,
+                     level:int,
                      correlation:str,
                      fieldid:int,
                      ddid:int,
                      scan:int,
                      column:str,
                      outcolumn:str,
-                     use_model_data:bool,
+                     flag_estimate:bool,
+                     use_model_data:bool,  
+                     model_data:da.Array=None,
                      decorrelation:float=None,
                      compressionrank:int=None, 
-                     flagvalue:int=None, 
+                     flagvalue:int=None,
                      antennas:list=None, 
                      ):
     """
@@ -262,12 +354,16 @@ def compress_visdata(zarr_output_path:str,
 
     Parameters
     ----------
-    visdata : dask.array.Array
-        Visibility data to compress.
     decorrelation : float, optional
         Desired decorrelation level (0 to 1). Default is None.
     compressionrank : int, optional
         Number of singular values to keep. Default is None.
+    use_model_data : bool, optional
+        Whether to use model data to replace the flags.
+    model_data : dask.array.Array, optional
+        Model data to use if `use_model_data` is True.
+    flagvalue : float, optional
+        Value to replace flagged data with.
 
     Returns
     -------
@@ -304,6 +400,16 @@ def compress_visdata(zarr_output_path:str,
         (ds.FIELD_ID == fieldid)
     )
     
+    
+    # flags_packed = np.packbits(maintable.FLAG.values, axis=None)
+    # flags_row_packed = np.packbits(maintable.FLAG_ROW.values, axis=None)
+    # write_a_group_to_zarr(zarr_output_path,'FLAGS_ROW',flags_row_packed)
+    # write_a_group_to_zarr(zarr_output_path,'FLAGS',flags_packed)
+    
+    
+        
+    
+    
     ant1 = maintable.ANTENNA1.values
     ant2 = maintable.ANTENNA2.values
     
@@ -331,17 +437,46 @@ def compress_visdata(zarr_output_path:str,
         corr_ind = CORR_TYPES[str(corr)]
         corr_list_user.append(corr_ind)
         
+    maintable_copy = maintable.copy()
+    
+    if use_model_data:
+        if model_data is None:
+            mod_data = maintable.MODEL_DATA.data
+        else:
+            mod_data = maintable[model_data].data
+        
+        maintable_copy[column].data = da.where(maintable[column].data == maintable.FLAG.data, \
+            mod_data, maintable[column].data)
+        
+    elif flag_estimate:
+        log.warning(f"Using this method may significantly increase the computational time.\
+            This method uses interpolation to estimate the values of the flagged data.")
+        
+        updated_vis = estimate_flagged_data(maintable)
+        maintable_copy[column].data = updated_vis
+        
+    elif flagvalue:
+        log.warning(f"Using this method may lead to the amplification of noise,\
+            which might significantly affect the SVD compression. This is not recommended.")
+        maintable_copy[column].data = da.where(maintable[column].data == maintable.FLAG.data, \
+            flagvalue, maintable[column].data)
+    
+    else:
+        log.warning("No flag replacement method specified. If there are flagged data, they will not be replaced.")
+    
+    
     
     tasks = []
     baseline_total = len(baselines)*len(corr_list_user)
     baseline_progress = tqdm(total=baseline_total, desc="Decomposing the data.")
+    
     
     for bx,(antenna1,antenna2) in enumerate(baselines):
         
         antenna1 = int(antenna1)
         antenna2 = int(antenna2)
         baseline_mask = (ant1 == antenna1) & (ant2 == antenna2)
-        baseline_data = maintable.isel(row = baseline_mask)
+        baseline_data = maintable_copy.isel(row = baseline_mask)
 
         
         ant1name = ds_ant.NAME.values[antenna1]
@@ -351,27 +486,18 @@ def compress_visdata(zarr_output_path:str,
         #Go through the given correlations
         for c in corr_list_user:
             ci = np.where(corr_types == c)[0][0]
-            flag = baseline_data.FLAG.data[:,:,ci]
             visdata = baseline_data[column].data[:,:,ci]
-            
-            if use_model_data:
-                model_data = baseline_data.MODEL_DATA.data[:,:,ci]
             
             task = delayed(apply_svd)(
                 visdata=visdata,
-                flags=flag,
-                use_model_data=use_model_data,
-                model_data=model_data if use_model_data else None,
-                flagvalue=flagvalue,
                 decorrelation=decorrelation,
                 compressionrank=compressionrank
             )
             
-        
             corr_type = CORR_TYPES_REVERSE[c]
             
             save_path = Path(zarr_output_path) / 'MAIN'/ f"{outcolumn}" / f'{ant1name}-{ant2name}' / f'{corr_type}'
-            save_task = delayed(write_svd_to_zarr)(task, save_path,compressor)
+            save_task = delayed(write_svd_to_zarr)(task, save_path,compressor,level)
             tasks.append(save_task)
             
             baseline_progress.update(1)
@@ -379,17 +505,31 @@ def compress_visdata(zarr_output_path:str,
     return tasks
 
 
-def write_svd_to_zarr(svd_result, path: Path,compressor:str):
+def write_svd_to_zarr(svd_result, path: Path,compressor:str,level:int):
     U, s, V = svd_result
     
     # Ensure output group exists
     store = zarr.DirectoryStore(str(path))
     root = zarr.group(store=store, overwrite=True)
     
-    root.create_dataset('U', data=U.compute(), chunks=True, compression=compressor)
-    root.create_dataset('S', data=s.compute(), chunks=True, compression=compressor)
-    root.create_dataset('V', data=V.compute(), chunks=True, compression=compressor)
-    
+    # root.create_dataset('U', data=U.compute(), chunks=True, compression=compressor)
+    # root.create_dataset('S', data=s.compute(), chunks=True, compression=compressor)
+    # root.create_dataset('V', data=V.compute(), chunks=True, compression=compressor)
+    compressor = numcodecs.get_codec({'id': compressor, 'level': level})
+    ds = xr.Dataset(
+            {
+            "U": (("time", "mode"), U.compute()),  
+            "S": (("mode",), s.compute()),
+            "WT": (("mode", "channel"), V.compute()),
+            },
+            coords={
+            "time": np.arange(U.shape[0]),
+            "mode": np.arange(s.shape[0]),
+            "channel": np.arange(V.shape[1]),
+            })
+    ds.to_zarr(store,mode='a',encoding={var: {"compressor": compressor} for var in ds.data_vars})
+
+
 
 def compress_full_ms(ms_path:str, zarr_path:str,
                 consolidated:bool=True,
@@ -403,7 +543,9 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                 scan:int=0,
                 column:str='DATA',
                 outcolumn:str='COMPRESSED_DATA',
-                use_model_data:bool=True,
+                use_model_data:bool=False,
+                model_data:str=None,
+                flag_estimate:bool=False,
                 decorrelation:float=None,
                 compressionrank:int=None, 
                 flagvalue:int=None, 
@@ -467,6 +609,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
     tasks = compress_visdata(
                             zarr_output_path=zarr_output_path,
                             compressor=compressor,
+                            level=level,
                             correlation=correlation,
                             fieldid=fieldid,
                             ddid=ddid,
@@ -474,6 +617,8 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                             column=column,
                             outcolumn=outcolumn,
                             use_model_data=use_model_data,
+                            model_data=model_data,
+                            flag_estimate=flag_estimate,
                             decorrelation=decorrelation,
                             compressionrank=compressionrank,
                             flagvalue=flagvalue,
@@ -481,13 +626,28 @@ def compress_full_ms(ms_path:str, zarr_path:str,
     
     with TqdmCallback(desc=f"Compressing the visibility data."):
         dask.compute(*tasks)
+        
+    delete_zarr_groups(zarr_output_path,"MAIN/FLAG")
+    delete_zarr_groups(zarr_output_path,"MAIN/FLAG_ROW")
     
 
-             
-  
-  
-    
 
+def delete_zarr_groups(zarr_path:str,group:str):
+    """
+    Delete the specified group on the specified zarr store.
     
-    
-    
+    Parameters
+    ------
+    zarr_path (str)
+        The path to the zarr store.
+    group (str)
+        The group to delete.
+    """
+
+    store = zarr.DirectoryStore(zarr_path)
+    root = zarr.group(store=store)
+
+    abs_path = os.path.join(store.path, group)
+
+    if os.path.exists(abs_path):
+        shutil.rmtree(abs_path)
