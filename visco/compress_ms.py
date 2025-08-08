@@ -1,3 +1,7 @@
+import logging
+logging.getLogger('numcodecs').setLevel(logging.CRITICAL)
+logging.getLogger("daskms").setLevel(logging.ERROR)
+
 import dask.array as da
 import numpy as np
 import xarray as xr
@@ -8,17 +12,16 @@ import zarr
 import ast
 from itertools import combinations
 from daskms import xds_from_table
-from dask import delayed,compute
+from dask import delayed
 from scipy.interpolate import griddata
 import dask
 from tqdm import tqdm
 from tqdm.dask import TqdmCallback
 import visco
 log = visco.get_logger(name="VISCO")
-import logging
 from omegaconf import OmegaConf
-logging.getLogger("daskms").setLevel(logging.ERROR)
-logging.getLogger('numcodecs').setLevel(logging.CRITICAL)
+
+
 import numcodecs
 from numcodecs import Blosc, Zstd, GZip
 
@@ -400,15 +403,10 @@ def compress_visdata(zarr_output_path:str,
         (ds.FIELD_ID == fieldid)
     )
     
-    
     # flags_packed = np.packbits(maintable.FLAG.values, axis=None)
     # flags_row_packed = np.packbits(maintable.FLAG_ROW.values, axis=None)
     # write_a_group_to_zarr(zarr_output_path,'FLAGS_ROW',flags_row_packed)
     # write_a_group_to_zarr(zarr_output_path,'FLAGS',flags_packed)
-    
-    
-        
-    
     
     ant1 = maintable.ANTENNA1.values
     ant2 = maintable.ANTENNA2.values
@@ -477,6 +475,7 @@ def compress_visdata(zarr_output_path:str,
         antenna2 = int(antenna2)
         baseline_mask = (ant1 == antenna1) & (ant2 == antenna2)
         baseline_data = maintable_copy.isel(row = baseline_mask)
+        row_idx = baseline_data.coords['ROWID'].data
 
         
         ant1name = ds_ant.NAME.values[antenna1]
@@ -496,8 +495,8 @@ def compress_visdata(zarr_output_path:str,
             
             corr_type = CORR_TYPES_REVERSE[c]
             
-            save_path = Path(zarr_output_path) / 'MAIN'/ f"{outcolumn}" / f'{ant1name}-{ant2name}' / f'{corr_type}'
-            save_task = delayed(write_svd_to_zarr)(task, save_path,compressor,level)
+            save_path = Path(zarr_output_path) / 'MAIN'/ f"{outcolumn}" / f'{ant1name}&{ant2name}' / f'{corr_type}'
+            save_task = delayed(write_svd_to_zarr)(task, save_path,compressor,level,row_idx)
             tasks.append(save_task)
             
             baseline_progress.update(1)
@@ -505,16 +504,14 @@ def compress_visdata(zarr_output_path:str,
     return tasks
 
 
-def write_svd_to_zarr(svd_result, path: Path,compressor:str,level:int):
+def write_svd_to_zarr(svd_result, path: Path,compressor:str,level:int,rowid:np.ndarray):
+    
     U, s, V = svd_result
     
-    # Ensure output group exists
+    
     store = zarr.DirectoryStore(str(path))
     root = zarr.group(store=store, overwrite=True)
     
-    # root.create_dataset('U', data=U.compute(), chunks=True, compression=compressor)
-    # root.create_dataset('S', data=s.compute(), chunks=True, compression=compressor)
-    # root.create_dataset('V', data=V.compute(), chunks=True, compression=compressor)
     compressor = numcodecs.get_codec({'id': compressor, 'level': level})
     ds = xr.Dataset(
             {
@@ -523,7 +520,7 @@ def write_svd_to_zarr(svd_result, path: Path,compressor:str,level:int):
             "WT": (("mode", "channel"), V.compute()),
             },
             coords={
-            "time": np.arange(U.shape[0]),
+            "time": rowid,
             "mode": np.arange(s.shape[0]),
             "channel": np.arange(V.shape[1]),
             })
@@ -532,17 +529,17 @@ def write_svd_to_zarr(svd_result, path: Path,compressor:str,level:int):
 
 
 def compress_full_ms(ms_path:str, zarr_path:str,
-                consolidated:bool=True,
-                chunk_size_row:int=100000,
-                overwrite:bool=True,
-                compressor:str="zstd",
-                level:int=4,
-                correlation:str='XX,YY',
-                fieldid:int=0,
-                ddid:int=0,
-                scan:int=0,
-                column:str='DATA',
-                outcolumn:str='COMPRESSED_DATA',
+                consolidated:bool,
+                chunk_size_row:int,
+                overwrite:bool,
+                compressor:str,
+                level:int,
+                correlation:str,
+                fieldid:int,
+                ddid:int,
+                scan:int,
+                column:str,
+                outcolumn:str,
                 use_model_data:bool=False,
                 model_data:str=None,
                 flag_estimate:bool=False,
@@ -583,6 +580,8 @@ def compress_full_ms(ms_path:str, zarr_path:str,
         Output column name for compressed data. Default is 'COMPRESSED_DATA'.
     use_model_data : bool
         Whether to use model data for compression. Default is True.
+    model_data: str
+        The column which contains the model data to use to estimate the flagged values.
     decorrelation : float
         Desired decorrelation level (0 to 1). Default is None.
     compressionrank : int
@@ -596,7 +595,9 @@ def compress_full_ms(ms_path:str, zarr_path:str,
     -------
     """
     
-    # zarr_output_path = os.path.join(os.getcwd(), "compression-output", f"{zarr_path}")
+    if not os.path.exists(ms_path):
+        raise ValueError(f"Measurement Set path does not exist: {ms_path}")
+    
     zarr_output_path = os.path.join(zarr_path)
     write_ms_to_zarr(ms_path=ms_path,
                     zarr_path=zarr_output_path,
@@ -629,6 +630,9 @@ def compress_full_ms(ms_path:str, zarr_path:str,
         
     delete_zarr_groups(zarr_output_path,"MAIN/FLAG")
     delete_zarr_groups(zarr_output_path,"MAIN/FLAG_ROW")
+    delete_zarr_groups(zarr_output_path,f"MAIN/{column}")
+    if use_model_data:
+        delete_zarr_groups(zarr_output_path,f"MAIN/{model_data}")
     
 
 

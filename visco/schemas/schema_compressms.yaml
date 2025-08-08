@@ -1,0 +1,120 @@
+version: 1.0beta1
+
+Archival:
+    ms:
+    info: The Measurement Set file path.
+    dtype: str
+    default: null
+    required: True
+
+
+  zarrstore:
+    info: The path to the output Zarr store.
+    dtype: str
+    default: null
+    required: True
+    abbreviation: zs
+  
+  consolidated:
+    info: Whether to write consolidated metadata for faster loading. Default is True.
+    dtype: bool
+    default: True
+    abbreviation: consol
+
+  chunk_size_row:
+    info: Chunk size for the 'row' dimension in the main table and large subtables. Default is 100000.
+    dtype: int
+    default: 10000
+    abbreviation: czr
+
+  overwrite:
+    info: Whether to overwrite existing Zarr store. Default is True.
+    dtype: bool
+    default: True
+    abbreviation: ow
+
+  compressor:
+    info: Compression algorithm to use ('zstd', 'gzip', 'blosc') on the zarr store. Default is 'zstd'.
+    dtype: str
+    default: zstd
+
+  level:
+    info: Compression level (1-9). Default is 4. Higher level means better compression ratio, but slower compression.
+    dtype: int
+    default: 4
+    abbreviation: l
+
+  correlation:
+    info: Correlation types to compress (e.g., 'XX,YY'). Default is 'XX,YY'.
+    dtype: str
+    default: XX,YY
+    abbreviation: corr
+  
+  fieldid:
+    info: Field ID to compress. Default is 0.
+    dtype: int
+    default: 0
+    abbreviation: fid
+
+  ddid:
+    info: Data description ID to compress. Default is 0.
+    dtype: int
+    default: 0
+
+  scan:
+    info: Scan number to filter by. Default is 1.
+    dtype: int
+    default: 1
+
+
+  column:
+    info: Column name for visibility data (e.g., 'DATA'). Default is 'DATA'.
+    dtype: str
+    default: DATA
+    abbreviation: col
+
+  outcolumn:
+    info: Output column name for compressed data. Default is 'COMPRESSED_DATA'.
+    dtype: str
+    default: COMPRESSED_DATA
+    abbreviation: oc
+
+  use_model_data:
+    info: Whether to use model data to estimate the visibility flagged data. This is the recommended method.
+    dtype: bool
+    default: null
+    abbreviation: umd
+
+  model_data:
+    info: The column which contains the model data to use to estimate the flagged values.
+    dtype: str
+    default: null
+    abbreviation: md
+  
+  flagestimate:
+    info: Whether to estimate the visibility flagged data using gridding. This will significantly increase computational time.
+    dtype: bool
+    default: null
+    abbreviation: fest
+
+  flagvalue:
+    info: The value with which to replace all the visibility flagged data. This method is not recommended, as it will lead to noise amplification, making the SVD compression ineffiencit or rendering it futile. 
+    dtype: float
+    default: null
+    abbreviation: fv
+  
+  decorrelation:
+    info: Desired minimum decorrelation for each baseline(0 to 1). e.g. if you specify decorrelation to be 0.98, then at least 98% of the original signal will be retained on each baseline during the compression.
+    dtype: float
+    default: null
+    abbreviation: dec
+  
+  compressionrank:
+    info: Number of singular values to keep across all the baselines.
+    dtype: int
+    default: null
+    abbreviation: cr
+  antennas:
+    info: List of antenna indices to compress. If None, all baselines are used.
+    dtype: list
+    dfault: null

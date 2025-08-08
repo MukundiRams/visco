@@ -10,17 +10,17 @@ import zarr
 
 import visco
 from visco import BIN, get_logger
-from visco import decompress
+from visco import decompress_ms
 
-log = get_logger(BIN.decompression)
+log = get_logger(BIN.decompressms)
 
-command = BIN.decompression
+command = BIN.decompressms
 
 thisdir = os.path.dirname(__file__)
-decompression_params = glob.glob(f"{thisdir}/*.yaml")
-decompression_files = [File(item) for item in decompression_params]
+decompressms_params = glob.glob(f"{thisdir}/*.yaml")
+decompressms_files = [File(item) for item in decompressms_params]
 parserfile = File(f"{thisdir}/{command}.yaml")
-config = paramfile_loader(parserfile, decompression_files)[command]
+config = paramfile_loader(parserfile, decompressms_files)[command]
 
 
 @click.command(command)
@@ -29,7 +29,7 @@ config = paramfile_loader(parserfile, decompression_files)[command]
 def runit(**kwargs):
     opts = OmegaConf.create(kwargs)
     zarr_path = opts.zarr_path
-    output_column = opts.output_column
+    column = opts.column
     ms = opts.ms
     
-    decompress.decompress_visdata(zarr_path, output_column, ms)
+    decompress_ms.decompress_ms(zarr_path, ms, column)

@@ -27,6 +27,6 @@ def get_logger(name, level="DEBUG"):
 
 LOG = get_logger("VISCO")
 
-BIN = OmegaConf.create({"archival": "archival",
-                        "decompression": "decompression"
+BIN = OmegaConf.create({"compressms": "compressms",
+                        "decompressms": "decompressms"
                         })
