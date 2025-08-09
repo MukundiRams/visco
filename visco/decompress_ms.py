@@ -110,7 +110,7 @@ def decompress_ms(zarr_path:str,msname:str,column:str):
     zarr_folders  = list_subtables(zarr_path)
     tasks = []
     for folder in zarr_folders:
-        if folder == 'MAIN':
+        if folder == 'MAIN' or 'FLAGS' or 'FLAGS_ROW':
             continue
         task = write_subtable(zarr_path,msname,folder)
         tasks.append(task)
@@ -158,13 +158,30 @@ def decompress_ms(zarr_path:str,msname:str,column:str):
             vis_reconstructed = reconstruct_vis(U, S, Vt)
             reconstructed_data[row_indices, :, corr_idx] = vis_reconstructed
     
+    flags_ds = xr.open_zarr(zarr_path,group='FLAGS',consolidated=True)
+    flags_length = data_shape[0] * data_shape[1] * data_shape[2]
+    flags = np.unpackbits(flags_ds.FLAGS.values, count=flags_length)
+    flags = flags.reshape(data_shape)
+    
+    flag_row_ds = xr.open_zarr(zarr_path,group='FLAGS_ROW',consolidated=True)
+    flags_row = np.unpackbits(flag_row_ds.FLAGS_ROW.values, count=data_shape[0])
 
+    
+    
     maintable = maintable.assign(**{
     'DATA': xr.DataArray(reconstructed_data, 
                                 dims=("row", "chan", "corr"),
                                 coords=
                                     {"ROWID": ("row", rowid)
-                                })
+                                }),
+    'FLAG': xr.DataArray(flags,
+                        dims=("row","chan","corr"),
+                        coords={"ROWID":("row",rowid)
+                                }),
+    'FLAG_ROW': xr.DataArray(flags_row,
+                             dims=("row"),
+                             coords={"ROWID":("row",rowid)
+                                     })
     })
     
     write_task = xds_to_table(maintable, f"{msname}", columns=['DATA'])

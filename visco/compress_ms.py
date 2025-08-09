@@ -332,7 +332,7 @@ def write_a_group_to_zarr(zarr_path:str,group:str,data:np.ndarray):
             "row": np.arange(data.shape[0])
         }
     )
-    ds.to_zarr(zarr_path,group=f"MAIN",mode='a')
+    ds.to_zarr(zarr_path,group=f"{group}",mode='a')
 
 
 def compress_visdata(zarr_output_path:str,
@@ -403,10 +403,13 @@ def compress_visdata(zarr_output_path:str,
         (ds.FIELD_ID == fieldid)
     )
     
-    # flags_packed = np.packbits(maintable.FLAG.values, axis=None)
-    # flags_row_packed = np.packbits(maintable.FLAG_ROW.values, axis=None)
-    # write_a_group_to_zarr(zarr_output_path,'FLAGS_ROW',flags_row_packed)
-    # write_a_group_to_zarr(zarr_output_path,'FLAGS',flags_packed)
+    
+    flags = maintable.FLAG.astype(bool).values
+    flags_row = maintable.FLAG_ROW.astype(bool).values
+    flags_packed = np.packbits(flags, axis=None)
+    flags_row_packed = np.packbits(flags_row, axis=None)
+    write_a_group_to_zarr(zarr_output_path,'FLAGS_ROW',flags_row_packed)
+    write_a_group_to_zarr(zarr_output_path,'FLAGS',flags_packed)
     
     ant1 = maintable.ANTENNA1.values
     ant2 = maintable.ANTENNA2.values
@@ -443,8 +446,8 @@ def compress_visdata(zarr_output_path:str,
         else:
             mod_data = maintable[model_data].data
         
-        maintable_copy[column].data = da.where(maintable[column].data == maintable.FLAG.data, \
-            mod_data, maintable[column].data)
+        maintable_copy[column].data = da.where(maintable_copy[column].data == maintable_copy.FLAG.data, \
+            mod_data, maintable_copy[column].data)
         
     elif flag_estimate:
         log.warning(f"Using this method may significantly increase the computational time.\
@@ -454,10 +457,10 @@ def compress_visdata(zarr_output_path:str,
         maintable_copy[column].data = updated_vis
         
     elif flagvalue:
-        log.warning(f"Using this method may lead to the amplification of noise,\
+        log.warning(f"Using this flag replacement method may lead to the amplification of noise,\
             which might significantly affect the SVD compression. This is not recommended.")
-        maintable_copy[column].data = da.where(maintable[column].data == maintable.FLAG.data, \
-            flagvalue, maintable[column].data)
+        maintable_copy[column].data = da.where(maintable_copy[column].data == maintable_copy.FLAG.data, \
+            flagvalue, maintable_copy[column].data)
     
     else:
         log.warning("No flag replacement method specified. If there are flagged data, they will not be replaced.")
@@ -466,7 +469,7 @@ def compress_visdata(zarr_output_path:str,
     
     tasks = []
     baseline_total = len(baselines)*len(corr_list_user)
-    baseline_progress = tqdm(total=baseline_total, desc="Decomposing the data.")
+    baseline_progress = tqdm(total=baseline_total, desc="Decomposing the visibility data")
     
     
     for bx,(antenna1,antenna2) in enumerate(baselines):
