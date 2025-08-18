@@ -32,4 +32,4 @@ def runit(**kwargs):
     column = opts.column
     ms = opts.ms
     
-    decompress_ms.decompress_ms(zarr_path, ms, column)
+    decompress_ms.write_datasets_to_ms(zarr_path, ms, column)

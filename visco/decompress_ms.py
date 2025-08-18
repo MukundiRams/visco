@@ -6,7 +6,9 @@ import xarray as xr
 import numpy as np
 import dask.array as da
 import dask
+from dask import delayed
 import os
+import shutil
 from omegaconf import OmegaConf
 from daskms import xds_to_table,xds_from_table
 import visco
@@ -81,46 +83,30 @@ def reconstruct_vis(U:np.ndarray,S:np.ndarray,Vt:np.ndarray):
     """
     
     return U @ np.diag(S) @ Vt
-    
-def decompress_ms(zarr_path:str,msname:str,column:str):
+
+
+
+def construct_main_ds(zarr_path:str,column:str):
     """
-    Decompress the zarr store into an MS (MSv2).
+    Construct the full main table dataset.
     
     Parameters
     ------
     zarr path (str)
         The path to the zarr store.
     
-    msname (str) 
-        The name of the output MS.
-    
     column (str)
         The column in which the compressed data is stored in in the zarr store.
     
     Returns
     -----
-    None
+    maintable dataset (xarray dataset)
     """
     
-    main_ds = xr.open_zarr(zarr_path,group='MAIN')
-    write_main = xds_to_table(main_ds,f"{msname}")
-    dask.compute(write_main)
-    
-     
-    zarr_folders  = list_subtables(zarr_path)
-    tasks = []
-    for folder in zarr_folders:
-        if folder == 'MAIN' or 'FLAGS' or 'FLAGS_ROW':
-            continue
-        task = write_subtable(zarr_path,msname,folder)
-        tasks.append(task)
-    dask.compute(*tasks)
-    
- 
+    maintable = xr.open_zarr(zarr_path,group='MAIN',consolidated=True)
     antennas = xr.open_zarr(zarr_path, group='ANTENNA', consolidated=True)
     antnames = antennas.NAME.values
 
-    maintable = xds_from_table(msname)[0]
     ant1 = maintable.ANTENNA1.values
     ant2 = maintable.ANTENNA2.values
     data_shape = maintable.DATA.shape  # (row, chan, corr)
@@ -154,7 +140,7 @@ def decompress_ms(zarr_path:str,msname:str,column:str):
             S = components.S.data
             Vt = components.WT.data
             
-           
+        
             vis_reconstructed = reconstruct_vis(U, S, Vt)
             reconstructed_data[row_indices, :, corr_idx] = vis_reconstructed
     
@@ -174,18 +160,87 @@ def decompress_ms(zarr_path:str,msname:str,column:str):
                                 coords=
                                     {"ROWID": ("row", rowid)
                                 }),
-    'FLAG': xr.DataArray(flags,
+    'FLAG': xr.DataArray(da.from_array(flags,chunks=chunks),
                         dims=("row","chan","corr"),
                         coords={"ROWID":("row",rowid)
                                 }),
-    'FLAG_ROW': xr.DataArray(flags_row,
-                             dims=("row"),
-                             coords={"ROWID":("row",rowid)
-                                     })
+    'FLAG_ROW': xr.DataArray(da.from_array(flags_row,chunks=chunks[0]),
+                            dims=("row"),
+                            coords={"ROWID":("row",rowid)
+                                    })
     })
     
-    write_task = xds_to_table(maintable, f"{msname}", columns=['DATA'])
-    dask.compute(write_task)        
+    return maintable
+
+    
+def open_dataset(zarr_path:str,column:str,group:str=None):
+    """"
+    Open the zarr store in a MSv2 format including the SVD components.
+    
+    Parameters
+    ------
+    zarr path (str)
+        The path to the zarr store.
+    
+    column (str)
+        The column in which the compressed data is stored in in the zarr store.
+    
+    group (str)
+        MS group/subtable to open. If none, the main table is opened. Default is None.
+    
+    Returns
+    -----
+    dataset (xarray dataset)
+    """
+    if group == None:
+        maintable = construct_main_ds(zarr_path=zarr_path,column=column)
+        return maintable
+    else:
+        ds = xr.open_zarr(zarr_path,group=group,consolidated=True)
+        
+        return ds
+    
+        
+def write_datasets_to_ms(zarr_path:str,msname:str,column:str):
+    """"
+    Write all the datasets to the Measurement set.
+    
+    Parameters
+    ------
+    zarr path (str)
+        The path to the zarr store.
+    
+    msname (str) 
+        The name of the output MS.
+    
+    column (str)
+        The column in which the compressed data is stored in in the zarr store.
+    
+    Returns
+    -----
+    None
+    """  
+    if os.path.exists(msname):
+        shutil.rmtree(msname)
+       
+    maintable =  construct_main_ds(zarr_path=zarr_path,column=column)    
+    write_main = xds_to_table(maintable,f"{msname}")
+    dask.compute(write_main) 
+    
+    
+    zarr_folders  = list_subtables(zarr_path)
+    non_folders = ['MAIN','FLAGS','FLAG_ROW']
+    tasks = []
+    for folder in zarr_folders:
+        if folder in non_folders:
+            continue
+        task = write_subtable(zarr_path,msname,folder)
+        tasks.append(task)
+    dask.compute(*tasks)
+      
+
+
+         
             
     
     

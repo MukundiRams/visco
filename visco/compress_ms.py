@@ -469,7 +469,7 @@ def compress_visdata(zarr_output_path:str,
     
     tasks = []
     baseline_total = len(baselines)*len(corr_list_user)
-    baseline_progress = tqdm(total=baseline_total, desc="Decomposing the visibility data")
+    baseline_progress = tqdm(total=baseline_total, desc="Analyzing the MS.")
     
     
     for bx,(antenna1,antenna2) in enumerate(baselines):
@@ -628,7 +628,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                             flagvalue=flagvalue,
                             antennas=antennas)
     
-    with TqdmCallback(desc=f"Compressing the visibility data."):
+    with TqdmCallback(desc=f"Writing the final data."):
         dask.compute(*tasks)
         
     delete_zarr_groups(zarr_output_path,"MAIN/FLAG")
