@@ -44,3 +44,7 @@ tenv/
 
 # OS
 .DS_Store
+
+#ms
+*.ms
+*.zarr
