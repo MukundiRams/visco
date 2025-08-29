@@ -50,6 +50,13 @@ Archival:
     default: XX,YY
     abbreviation: corr
   
+  correlation_optimized:
+    info: Whether to optimize the SVD compression by compressing XX and YY together, XY and YX together, reducing the computational time.
+    dtype: bool
+    default: False
+    abbreviation: co
+
+  
   fieldid:
     info: Field ID to compress. Default is 0.
     dtype: int

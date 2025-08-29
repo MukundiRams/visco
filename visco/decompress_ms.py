@@ -85,6 +85,16 @@ def reconstruct_vis(U:np.ndarray,S:np.ndarray,Vt:np.ndarray):
     return U @ np.diag(S) @ Vt
 
 
+def unstack_vis(vis_reconstructed, nrows):
+    """Return list of blocks each with shape (nrows, nchan)."""
+    if isinstance(vis_reconstructed, da.Array):
+        nstack = int(vis_reconstructed.shape[0] // nrows)
+        return [vis_reconstructed[i*nrows:(i+1)*nrows, :] for i in range(nstack)]
+    else:
+        nstack = vis_reconstructed.shape[0] // nrows
+        return list(np.split(vis_reconstructed, nstack, axis=0))
+
+
 
 def construct_main_ds(zarr_path:str,column:str):
     """
@@ -131,18 +141,33 @@ def construct_main_ds(zarr_path:str,column:str):
             continue
         
         baseline_mask = (ant1 == ant1_idx) & (ant2 == ant2_idx)
-        row_indices = da.where(baseline_mask)[0]
+        row_indices = da.where(baseline_mask)[0].compute()
+        # nrows = row_indices.compute()
+        nrows=row_indices.size
+        corr_indices = {'XX':0,'XY':1, 'YX':2,'YY':-1}
         
         for corr_idx, corr_name in enumerate(correlations):
-                
+            
             components = xr.open_zarr(f"{zarr_path}/MAIN/{column}/{baseline}/{corr_name}")
             U = components.U.data
             S = components.S.data
             Vt = components.WT.data
             
-        
             vis_reconstructed = reconstruct_vis(U, S, Vt)
-            reconstructed_data[row_indices, :, corr_idx] = vis_reconstructed
+            
+            if corr_name == 'diagonals':
+                parts = unstack_vis(vis_reconstructed, nrows)
+                reconstructed_data[row_indices, :, 0] = parts[0]
+                reconstructed_data[row_indices, :, 3] = parts[1]
+                
+                
+            elif corr_name == 'offdiagonals':
+                parts = unstack_vis(vis_reconstructed, nrows)
+                reconstructed_data[row_indices, :, 1] = parts[0]
+                reconstructed_data[row_indices, :, 2] = parts[1]
+            
+            else:
+                reconstructed_data[row_indices, :, corr_indices[corr_name]] = vis_reconstructed
     
     flags_ds = xr.open_zarr(zarr_path,group='FLAGS',consolidated=True)
     flags_length = data_shape[0] * data_shape[1] * data_shape[2]
@@ -152,6 +177,25 @@ def construct_main_ds(zarr_path:str,column:str):
     flag_row_ds = xr.open_zarr(zarr_path,group='FLAGS_ROW',consolidated=True)
     flags_row = np.unpackbits(flag_row_ds.FLAGS_ROW.values, count=data_shape[0])
 
+    if 'WEIGHT_SPECTRUM' in list_subtables(f"{zarr_path}"):
+        weights = xr.open_zarr(f"{zarr_path}/WEIGHT_SPECTRUM",consolidated=True)
+
+        
+        weights_reconstructed = reconstruct_vis(weights.U.values,weights.S.values,weights.WT.values)
+        weights_expanded = np.expand_dims(weights_reconstructed,axis=-1)
+        final_weights = np.tile(weights_expanded,(1,1,data_shape[2]))
+        
+        maintable = maintable.assign(**{
+            'WEIGHT_SPECTRUM':xr.DataArray(da.from_array(final_weights,chunks=chunks),
+                                        dims=("row","chan","corr"),
+                                        coords={"ROWID":("row",rowid)
+                                                }),
+            'SIGMA_SPECTRUM':xr.DataArray(da.from_array(final_weights,chunks=chunks),
+                                        dims=("row","chan","corr"),
+                                        coords={"ROWID":("row",rowid)
+                                                })
+                })
+        
     
     
     maintable = maintable.assign(**{
@@ -173,7 +217,7 @@ def construct_main_ds(zarr_path:str,column:str):
     return maintable
 
     
-def open_dataset(zarr_path:str,column:str,group:str=None):
+def open_dataset(zarr_path:str,column:str='COMPRESSED_DATA',group:str=None):
     """"
     Open the zarr store in a MSv2 format including the SVD components.
     
@@ -225,17 +269,21 @@ def write_datasets_to_ms(zarr_path:str,msname:str,column:str):
        
     maintable =  construct_main_ds(zarr_path=zarr_path,column=column)    
     write_main = xds_to_table(maintable,f"{msname}")
-    dask.compute(write_main) 
+    
+    from dask.diagnostics import ProgressBar
+    with ProgressBar():
+        dask.compute(write_main) 
     
     
     zarr_folders  = list_subtables(zarr_path)
-    non_folders = ['MAIN','FLAGS','FLAG_ROW']
+    non_folders = ['MAIN','FLAGS','FLAG_ROW','WEIGHT_SPECTRUM']
     tasks = []
     for folder in zarr_folders:
         if folder in non_folders:
             continue
         task = write_subtable(zarr_path,msname,folder)
         tasks.append(task)
+        
     dask.compute(*tasks)
       
 

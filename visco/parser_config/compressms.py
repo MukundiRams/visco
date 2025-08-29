@@ -38,6 +38,7 @@ def runit(**kwargs):
     compressor = opts.compressor
     level = opts.level
     correlation = opts.correlation
+    corr_opt = opts.correlation_optimized
     column = opts.column
     outcolumn = opts.outcolumn
     use_model_data = opts.use_model_data
@@ -55,6 +56,7 @@ def runit(**kwargs):
                                  compressor=compressor,
                                  level=level,
                                  correlation=correlation,
+                                 correlation_optimized=corr_opt,
                                  fieldid=fieldid, ddid=ddid,scan=scan,
                                  column=column, outcolumn=outcolumn,
                                  use_model_data=use_model_data, model_data=model_data,
