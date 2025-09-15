@@ -1,16 +1,14 @@
 from doctest import OutputChecker
 import glob
 import os
-
 import click
 from omegaconf import OmegaConf
 from scabha.basetypes import File
 from scabha.schema_utils import clickify_parameters, paramfile_loader
-import zarr
-
 import visco
 from visco import BIN, get_logger
 from visco import decompress_ms
+from . import cli
 
 log = get_logger(BIN.decompressms)
 
@@ -23,10 +21,10 @@ parserfile = File(f"{thisdir}/{command}.yaml")
 config = paramfile_loader(parserfile, decompressms_files)[command]
 
 
-@click.command(command)
+@cli.command(command)
 @click.version_option(str(visco.__version__))
 @clickify_parameters(config)
-def runit(**kwargs):
+def decompressrunit(**kwargs):
     opts = OmegaConf.create(kwargs)
     zarr_path = opts.zarr_path
     column = opts.column

@@ -23,8 +23,8 @@ ducc0 = "^0.38.0"
 
 [tool.poetry.scripts]
 
-compressms = "visco.parser_config.compressms:runit"
-decompressms = "visco.parser_config.decompressms:runit"
+
+visco = "visco.parser_config:cli"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"

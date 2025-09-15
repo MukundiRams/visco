@@ -5,6 +5,7 @@ inputs:
     dtype: str
     default: null
     required: True
+    abbreviation: ms
 
 
   zarrstore:
@@ -21,10 +22,10 @@ inputs:
     abbreviation: consol
 
   chunk_size_row:
-    info: Chunk size for the 'row' dimension in the main table and large subtables. Default is 100000.
+    info: Chunk size for the 'row' dimension in the main table and large subtables. Default is 10000.
     dtype: int
     default: 10000
-    abbreviation: czr
+    abbreviation: csr
 
   overwrite:
     info: Whether to overwrite existing Zarr store. Default is True.
@@ -42,6 +43,24 @@ inputs:
     dtype: int
     default: 4
     abbreviation: l
+
+  nworkers:
+    info: Number of Dask workers to use. Default is 4.
+    dtype: int
+    default: 4
+    abbreviation: nw
+  
+  nthreads:
+    info: Number of threads per Dask worker. Default is 2.
+    dtype: int
+    default: 2
+    abbreviation: nt
+  
+  memory_limit:
+    info: Memory limit per Dask worker (e.g., '4GB'). Default is '4GB'.
+    dtype: str
+    default: 4GB
+    abbreviation: ml
 
   correlation:
     info: Correlation types to compress (e.g., 'XX,YY'). Default is 'XX,YY'.

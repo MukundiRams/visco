@@ -1,14 +1,13 @@
 import glob
 import os
-
 import click
 from omegaconf import OmegaConf
 from scabha.basetypes import File
 from scabha.schema_utils import clickify_parameters, paramfile_loader
-
 import visco
 from visco import BIN, get_logger
 from visco import compress_ms
+from . import cli
 
 log = get_logger(BIN.compressms)
 
@@ -22,10 +21,10 @@ config = paramfile_loader(parserfile, compression_files)[command]
 
 
 
-@click.command(command)
+@cli.command(command)
 @click.version_option(str(visco.__version__))
 @clickify_parameters(config)
-def runit(**kwargs):
+def compressrunit(**kwargs):
     opts = OmegaConf.create(kwargs)
     ms = opts.ms
     fieldid = opts.fieldid
@@ -48,12 +47,18 @@ def runit(**kwargs):
     compressionrank = opts.compressionrank
     flagvalue = opts.flagvalue 
     antennas = opts.antennas
+    nworkers = opts.nworkers
+    nthreads = opts.nthreads
+    memory_limit = opts.memory_limit
     
     compress_ms.compress_full_ms(ms_path=ms, zarr_path=zarr_path, 
                                  consolidated=consolidated,
                                  chunk_size_row=chunk_size_row,
                                  overwrite=overwrite,
                                  compressor=compressor,
+                                 nworkers=nworkers,
+                                 nthreads=nthreads,
+                                 memory_limit=memory_limit,
                                  level=level,
                                  correlation=correlation,
                                  correlation_optimized=corr_opt,

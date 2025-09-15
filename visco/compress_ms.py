@@ -2,6 +2,7 @@ import logging
 logging.getLogger('numcodecs').setLevel(logging.CRITICAL)
 logging.getLogger("daskms").setLevel(logging.ERROR)
 
+
 import dask.array as da
 import numpy as np
 import xarray as xr
@@ -17,6 +18,7 @@ from scipy.interpolate import griddata
 import dask
 from tqdm import tqdm
 from tqdm.dask import TqdmCallback
+from dask.distributed import Client, LocalCluster
 import visco
 log = visco.get_logger(name="VISCO")
 from omegaconf import OmegaConf
@@ -32,6 +34,28 @@ CORR_TYPES = OmegaConf.load(f"{visco.PCKGDIR}/ms_corr_types.yaml").CORR_TYPES
 CORR_TYPES_REVERSE = OmegaConf.load(f"{visco.PCKGDIR}/ms_corr_types_reverse.yaml").CORR_TYPES
 
 _global_progress = None
+
+
+
+
+
+def setup_dask_client(memory_limit:str,nworkers:int,nthreads:int):
+    """
+    Set up a Dask client based on system resources.
+    """
+    
+    cluster = LocalCluster(
+        n_workers=nworkers, 
+        threads_per_worker=nthreads,
+        memory_limit=memory_limit,
+        processes=True,  
+        silence_logs=logging.ERROR,
+    )
+    
+    client = Client(cluster)
+  
+    return client
+
 
 
 def get_compressor(name:str=None, level:int=None):
@@ -74,7 +98,7 @@ def write_table_to_zarr(ms_path:str, zarr_path:str,
     global _global_progress
     
     if _global_progress:
-        _global_progress.set_description(f"Converting MS to a Zarr store.")
+        _global_progress.set_description(f"Converting MS to a Zarr store")
     
     if subtable:
         table_path = f"{ms_path}/{subtable}"
@@ -96,6 +120,9 @@ def write_table_to_zarr(ms_path:str, zarr_path:str,
             group_name = subtable
         else:
             group_name = 'MAIN'
+            
+        if chunk_size_row:
+            ds = ds.chunk({'row': chunk_size_row})
 
         encoding = {
             var: {
@@ -245,6 +272,8 @@ def apply_svd(visdata:da.Array,
     return U, S, Vt
 
 
+
+
 def estimate_flagged_data(maintable: xr.Dataset) -> xr.Dataset:
     """
     Estimate the values of the flagged data in the visibilities by interpolating
@@ -263,7 +292,7 @@ def estimate_flagged_data(maintable: xr.Dataset) -> xr.Dataset:
     
     global _global_progress
     if _global_progress:
-        _global_progress.set_description("Estimating flagged data (this may take time).")
+        _global_progress.set_description("Estimating flagged data (this may take time)")
     
     required_fields = ['FLAG', 'DATA', 'UVW', 'WEIGHT_SPECTRUM']
     
@@ -423,7 +452,7 @@ def compress_visdata(zarr_output_path:str,
     )
     
     if _global_progress:
-        _global_progress.set_description("Processing flags.")
+        _global_progress.set_description("Processing flags")
         
     flags = maintable.FLAG.astype(bool).values
     flags_row = maintable.FLAG_ROW.astype(bool).values
@@ -437,7 +466,7 @@ def compress_visdata(zarr_output_path:str,
     
     if "WEIGHT_SPECTRUM" in maintable.data_vars:
         if _global_progress:
-            _global_progress.set_description("Compressing WEIGHT SPECTRUM.")
+            _global_progress.set_description("Compressing WEIGHT SPECTRUM")
         
         ws = maintable.WEIGHT_SPECTRUM.values[:,:,0]
         wscomps = apply_svd(ws,compressionrank=1)
@@ -479,7 +508,7 @@ def compress_visdata(zarr_output_path:str,
     if use_model_data:
         
         if _global_progress:
-            _global_progress.set_description("Replacing flagged data with model.")
+            _global_progress.set_description("Replacing flagged data with model")
         
         if model_data is None:
             mod_data = maintable.MODEL_DATA.data
@@ -499,7 +528,7 @@ def compress_visdata(zarr_output_path:str,
     elif flagvalue:
         
         if _global_progress:
-            _global_progress.set_description(f"Replacing flagged data with {flagvalue}.")
+            _global_progress.set_description(f"Replacing flagged data with {flagvalue}")
         
         log.warning(f"Using this flag replacement method may lead to the amplification of noise,\
             which might significantly affect the SVD compression. This is not recommended.")
@@ -525,6 +554,7 @@ def compress_visdata(zarr_output_path:str,
         antenna2 = int(antenna2)
         baseline_mask = (ant1 == antenna1) & (ant2 == antenna2)
         baseline_data = maintable_copy.isel(row = baseline_mask)
+        # baseline_data = maintable.isel(row=np.flatnonzero(baseline_mask))
         row_idx = baseline_data.coords['ROWID'].data
 
         
@@ -533,8 +563,8 @@ def compress_visdata(zarr_output_path:str,
         
         if correlation_optimized:
             if 'XX' and 'YY' in correlation.split(","):
-                cixx = np.where(corr_types == 9)[0][0]
-                ciyy = np.where(corr_types == 12)[0][0]
+                cixx = np.where(corr_types[0] == 9)[0][0]
+                ciyy = np.where(corr_types[0] == 12)[0][0]
                 diag_visdata = np.vstack((baseline_data[column].data[:,:,cixx],baseline_data[column].data[:,:,ciyy]))
                 
                 task = delayed(apply_svd)(
@@ -543,14 +573,18 @@ def compress_visdata(zarr_output_path:str,
                     compressionrank=compressionrank
                 )
                 
-                row_idx = np.tile(row_idx, reps=2)
+                diag_row_idx = np.tile(row_idx, reps=2)
                 save_path = Path(zarr_output_path) / 'MAIN'/ f"{outcolumn}" / f'{ant1name}&{ant2name}' / 'diagonals'
-                save_task = delayed(write_svd_to_zarr)(task, save_path,compressor,level,row_idx)
+                save_task = delayed(write_svd_to_zarr)(task, save_path,compressor,level,diag_row_idx)
                 tasks.append(save_task)
+                
+                processed_baselines += 1
+                if _global_progress:
+                    _global_progress.update(1)
             
-            elif 'XY' and 'YX' in correlation.split(","):
-                cixy = np.where(corr_types == 10)[0][0]
-                ciyx = np.where(corr_types == 11)[0][0]
+            if 'XY' and 'YX' in correlation.split(","):
+                cixy = np.where(corr_types[0] == 10)[0][0]
+                ciyx = np.where(corr_types[0] == 11)[0][0]
                 offdiag_visdata = np.vstack((baseline_data[column].data[:,:,cixy],baseline_data[column].data[:,:,ciyx]))
                 
                 task = delayed(apply_svd)(
@@ -559,20 +593,20 @@ def compress_visdata(zarr_output_path:str,
                     compressionrank=compressionrank
                 )
                 
-                row_idx = np.tile(row_idx, reps=2)
+                off_diag_row_idx = np.tile(row_idx, reps=2)
                 save_path = Path(zarr_output_path) / 'MAIN'/ f"{outcolumn}" / f'{ant1name}&{ant2name}' / 'offdiagonals'
-                save_task = delayed(write_svd_to_zarr)(task, save_path,compressor,level,row_idx)
+                save_task = delayed(write_svd_to_zarr)(task, save_path,compressor,level,off_diag_row_idx)
                 tasks.append(save_task)
                 
-            # baseline_progress.update(1)
-            processed_baselines += 1
-            if _global_progress:
-                _global_progress.update(1) 
+                # baseline_progress.update(1)
+                processed_baselines += 1
+                if _global_progress:
+                    _global_progress.update(1) 
             
         else:    
             #Go through the given correlations
             for c in corr_list_user:
-                ci = np.where(corr_types == c)[0][0]
+                ci = np.where(corr_types[0] == c)[0][0]
                 visdata = baseline_data[column].data[:,:,ci]
                 
                 task = delayed(apply_svd)(
@@ -625,6 +659,9 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                 overwrite:bool,
                 compressor:str,
                 level:int,
+                nworkers:int,
+                nthreads:int,
+                memory_limit:str,
                 correlation:str,
                 correlation_optimized:bool,
                 fieldid:int,
@@ -638,7 +675,8 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                 decorrelation:float=None,
                 compressionrank:int=None, 
                 flagvalue:int=None, 
-                antennas:list=None):
+                antennas:list=None,
+                ):
     """
     Compress a Measurement Set using SVD and save to Zarr.
 
@@ -692,7 +730,9 @@ def compress_full_ms(ms_path:str, zarr_path:str,
     
     if not os.path.exists(ms_path):
         raise ValueError(f"Measurement Set path does not exist: {ms_path}")
-   
+
+    client = setup_dask_client(memory_limit=memory_limit,nworkers=nworkers,nthreads=nthreads)
+
     work_breakdown = calculate_total_work(ms_path, correlation, correlation_optimized, antennas)
     total_work = sum(work_breakdown.values())
 
@@ -708,7 +748,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                     compressor=compressor,
                     level=level)
     
-    _global_progress.set_description("Processing visibility data.")
+    _global_progress.set_description("Processing visibility data")
     tasks = compress_visdata(
                             zarr_output_path=zarr_output_path,
                             compressor=compressor,
@@ -728,12 +768,14 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                             flagvalue=flagvalue,
                             antennas=antennas)
     
-    # with TqdmCallback(desc=f"Writing the final data."):
-    _global_progress.set_description("Computing SVD compression.")
-    dask.compute(*tasks)
+    _global_progress.set_description("Computing SVD compression")
+    with TqdmCallback(desc=f"Writing the final data"):
+        dask.compute(*tasks)
+    
+    
     _global_progress.update(work_breakdown['final_compute'])
         
-    _global_progress.set_description("Finalizing and cleaning up.")
+    _global_progress.set_description("Finalizing and cleaning up")
     delete_zarr_groups(zarr_output_path,"MAIN/FLAG")
     delete_zarr_groups(zarr_output_path,"MAIN/FLAG_ROW")
     delete_zarr_groups(zarr_output_path,f"MAIN/{column}")
@@ -745,6 +787,8 @@ def compress_full_ms(ms_path:str, zarr_path:str,
     _global_progress.update(work_breakdown['cleanup'])
     _global_progress.set_description("✅ MS compression completed successfully!")
     
+    
+    client.close()
     if _global_progress:
         _global_progress.close()
         _global_progress = None
