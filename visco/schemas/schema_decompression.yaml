@@ -2,19 +2,20 @@ version: 1.0beta1
 
 Decompression:
   zarr_path:
-  info: Path to the zarr file containing the compressed data
+  info: Path to the zarr store containing the compressed data components.
   type: str
   required: true
   default: null
   example: /path/to/visco/data/2020-01-01T00:00:00.zarr
 
-output_column:
-  info: The column to be used.
+column:
+  info: The column in the zarr store in the SVD components were saved.
   type: str
-  default: 'DATA'
+  default: 'COMPRESSED_DATA'
 
 
 ms:
   info: The output Measurement Set file name.
   type: str
   default: decompressed.ms
+  

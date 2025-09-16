@@ -1,35 +1,34 @@
 from doctest import OutputChecker
 import glob
 import os
-
 import click
 from omegaconf import OmegaConf
 from scabha.basetypes import File
 from scabha.schema_utils import clickify_parameters, paramfile_loader
-import zarr
-
 import visco
 from visco import BIN, get_logger
-from visco import decompress
+from visco import decompress_ms
+from . import cli
 
-log = get_logger(BIN.decompression)
+log = get_logger(BIN.decompressms)
 
-command = BIN.decompression
+command = BIN.decompressms
 
 thisdir = os.path.dirname(__file__)
-decompression_params = glob.glob(f"{thisdir}/*.yaml")
-decompression_files = [File(item) for item in decompression_params]
+decompressms_params = glob.glob(f"{thisdir}/*.yaml")
+decompressms_files = [File(item) for item in decompressms_params]
 parserfile = File(f"{thisdir}/{command}.yaml")
-config = paramfile_loader(parserfile, decompression_files)[command]
+config = paramfile_loader(parserfile, decompressms_files)[command]
 
 
-@click.command(command)
+@cli.command(command)
 @click.version_option(str(visco.__version__))
 @clickify_parameters(config)
-def runit(**kwargs):
+def decompressrunit(**kwargs):
     opts = OmegaConf.create(kwargs)
     zarr_path = opts.zarr_path
-    output_column = opts.output_column
+    column = opts.column
     ms = opts.ms
     
-    decompress.decompress_visdata(zarr_path, output_column, ms)
+    decompress_ms.write_datasets_to_ms(zarr_path, ms, column)
+    

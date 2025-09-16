@@ -1,0 +1,25 @@
+  
+inputs:  
+  zarr_path:
+    info: Path to the zarr file containing the compressed data components.
+    dtype: str
+    required: true
+    default: null
+    abbreviation: zp
+
+  ms:
+    info: The output Measurement Set file name.
+    dtype: str
+    default: decompressed.ms
+    abbreviation: ms
+
+  column:
+    info: The column in the zarr store that the SVD components were saved in.
+    dtype: str
+    default: 'COMPRESSED_DATA'
+    abbreviation: col
+
+
+outputs:
+  {}
+  
