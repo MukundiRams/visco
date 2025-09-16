@@ -1,7 +1,6 @@
 import logging
 import os
 from importlib import metadata
-
 from omegaconf import OmegaConf
 
 __version__ = metadata.version(__package__)
@@ -31,3 +30,28 @@ BIN = OmegaConf.create({"visco": "visco",
                         "compressms": "compressms",
                         "decompressms": "decompressms"
                         })
+
+
+from dask.distributed import Client, LocalCluster
+
+
+def setup_dask_client(memory_limit:str,nworkers:int,nthreads:int,direct_to_workers:bool):
+    """
+    Set up a Dask client based on system resources.
+    """
+    
+    cluster = LocalCluster(
+        n_workers=nworkers, 
+        threads_per_worker=nthreads,
+        memory_limit=memory_limit,
+        processes=True, 
+        asynchronous=False, 
+        silence_logs=logging.ERROR,
+    )
+    
+    client = Client(cluster,direct_to_workers=direct_to_workers
+                    )
+    
+    client.wait_for_workers(nworkers)
+  
+    return client

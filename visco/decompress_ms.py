@@ -286,12 +286,3 @@ def write_datasets_to_ms(zarr_path:str,msname:str,column:str):
         
     dask.compute(*tasks)
       
-
-
-         
-            
-    
-    
-
-
-    

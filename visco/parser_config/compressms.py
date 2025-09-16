@@ -50,6 +50,7 @@ def compressrunit(**kwargs):
     nworkers = opts.nworkers
     nthreads = opts.nthreads
     memory_limit = opts.memory_limit
+    direct_to_workers = opts.direct_to_workers
     
     compress_ms.compress_full_ms(ms_path=ms, zarr_path=zarr_path, 
                                  consolidated=consolidated,
@@ -59,6 +60,7 @@ def compressrunit(**kwargs):
                                  nworkers=nworkers,
                                  nthreads=nthreads,
                                  memory_limit=memory_limit,
+                                 direct_to_workers=direct_to_workers,
                                  level=level,
                                  correlation=correlation,
                                  correlation_optimized=corr_opt,
@@ -68,5 +70,4 @@ def compressrunit(**kwargs):
                                  flag_estimate=flag_estimate, decorrelation=decorrelation,
                                  compressionrank=compressionrank,flagvalue=flagvalue,
                                  antennas=antennas)
-                                 
-    
+                                  

@@ -31,3 +31,4 @@ def decompressrunit(**kwargs):
     ms = opts.ms
     
     decompress_ms.write_datasets_to_ms(zarr_path, ms, column)
+    

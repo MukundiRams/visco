@@ -18,44 +18,24 @@ from scipy.interpolate import griddata
 import dask
 from tqdm import tqdm
 from tqdm.dask import TqdmCallback
-from dask.distributed import Client, LocalCluster
 import visco
 log = visco.get_logger(name="VISCO")
 from omegaconf import OmegaConf
 import warnings
-
-import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="daskms")
+
+from visco import setup_dask_client
 
 import numcodecs
 from numcodecs import Blosc, Zstd, GZip
+
+
+
 
 CORR_TYPES = OmegaConf.load(f"{visco.PCKGDIR}/ms_corr_types.yaml").CORR_TYPES
 CORR_TYPES_REVERSE = OmegaConf.load(f"{visco.PCKGDIR}/ms_corr_types_reverse.yaml").CORR_TYPES
 
 _global_progress = None
-
-
-
-
-
-def setup_dask_client(memory_limit:str,nworkers:int,nthreads:int):
-    """
-    Set up a Dask client based on system resources.
-    """
-    
-    cluster = LocalCluster(
-        n_workers=nworkers, 
-        threads_per_worker=nthreads,
-        memory_limit=memory_limit,
-        processes=True,  
-        silence_logs=logging.ERROR,
-    )
-    
-    client = Client(cluster)
-  
-    return client
-
 
 
 def get_compressor(name:str=None, level:int=None):
@@ -662,6 +642,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                 nworkers:int,
                 nthreads:int,
                 memory_limit:str,
+                direct_to_workers:bool,
                 correlation:str,
                 correlation_optimized:bool,
                 fieldid:int,
@@ -731,7 +712,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
     if not os.path.exists(ms_path):
         raise ValueError(f"Measurement Set path does not exist: {ms_path}")
 
-    client = setup_dask_client(memory_limit=memory_limit,nworkers=nworkers,nthreads=nthreads)
+    client = setup_dask_client(memory_limit=memory_limit,nworkers=nworkers,nthreads=nthreads,direct_to_workers=direct_to_workers)
 
     work_breakdown = calculate_total_work(ms_path, correlation, correlation_optimized, antennas)
     total_work = sum(work_breakdown.values())
@@ -862,3 +843,4 @@ def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: 
         'final_compute': 1,
         'cleanup': 1
     }
+    

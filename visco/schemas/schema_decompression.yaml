@@ -18,3 +18,4 @@ ms:
   info: The output Measurement Set file name.
   type: str
   default: decompressed.ms
+  

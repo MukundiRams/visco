@@ -61,6 +61,12 @@ inputs:
     dtype: str
     default: 4GB
     abbreviation: ml
+  
+  direct_to_workers:
+    info: Whether to use direct-to-worker communication in Dask. This can improve performance for certain workloads. Default is True.
+    dtype: bool
+    default: True
+    abbreviation: dtw
 
   correlation:
     info: Correlation types to compress (e.g., 'XX,YY'). Default is 'XX,YY'.
@@ -145,4 +151,3 @@ inputs:
 
 outputs:
   {}
-
