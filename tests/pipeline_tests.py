@@ -26,6 +26,7 @@ class TestArchiveFunction(unittest.TestCase):
             nthreads=1,
             memory_limit="2GB",
             direct_to_workers=False,
+            silence_logs=True,
             fieldid=0,
             ddid=0,
             scan=1,
