@@ -44,7 +44,7 @@ Archival:
     default: 4
     abbreviation: l
   
-    nworkers:
+  nworkers:
     info: Number of Dask workers to use. Default is 4.
     dtype: int
     default: 4
@@ -67,6 +67,18 @@ Archival:
     dtype: bool
     default: True
     abbreviation: dtw
+  
+  silence_logs:
+    info: Whether to silence Dask worker logs. Default is True.
+    dtype: bool
+    default: True
+    abbreviation: sl
+  
+  dashboard_address:
+    info: Address for the Dask dashboard (e.g., ':8787'). Default is None (no dashboard).
+    dtype: str
+    default: null
+    abbreviation: da
 
   correlation:
     info: Correlation types to compress (e.g., 'XX,YY'). Default is 'XX,YY'.

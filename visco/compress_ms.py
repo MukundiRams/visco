@@ -75,7 +75,6 @@ def write_table_to_zarr(ms_path:str, zarr_path:str,
     -------
     None
     """
-    global _global_progress
     
     if _global_progress:
         _global_progress.set_description(f"Converting MS to a Zarr store")
@@ -151,7 +150,6 @@ def write_ms_to_zarr(ms_path:str, zarr_path:str,
     None
     """
 
-    global _global_progress
     write_table_to_zarr(
         ms_path = ms_path,
         zarr_path= zarr_path,
@@ -270,7 +268,6 @@ def estimate_flagged_data(maintable: xr.Dataset) -> xr.Dataset:
         Updated dataset with flagged values estimated and filled.
     """
     
-    global _global_progress
     if _global_progress:
         _global_progress.set_description("Estimating flagged data (this may take time)")
     
@@ -401,7 +398,6 @@ def compress_visdata(zarr_output_path:str,
     dask.array.Array
         Compressed visibility data.
     """
-    global _global_progress
     
     ds = xr.open_zarr(zarr_output_path, consolidated=True,group='MAIN')
     ds_pol = xr.open_zarr(zarr_output_path, consolidated=True, group='POLARIZATION')
@@ -460,15 +456,15 @@ def compress_visdata(zarr_output_path:str,
     ant2 = maintable.ANTENNA2.values
     
     if antennas:
-        if isinstance(antlist, str): 
+        if isinstance(antennas, str): 
             try:
-                antlist = ast.literal_eval(antlist)
-                if not isinstance(antlist, list) or not all(isinstance(x, int) for x in antlist):
-                    raise ValueError("Parsed antlist is not a valid list of integers.")
+                antennas = ast.literal_eval(antennas)
+                if not isinstance(antennas, list) or not all(isinstance(x, int) for x in antennas):
+                    raise ValueError("Parsed antennas is not a valid list of integers.")
             except (ValueError, SyntaxError):
-                raise ValueError(f"Invalid format for antlist: {antlist}. Expected a list of integers.")
+                raise ValueError(f"Invalid format for antennas: {antennas}. Expected a list of integers.")
         
-        baselines = list(combinations(antlist, 2))      
+        baselines = list(combinations(antennas, 2))      
     else:
         baselines = np.unique([(a1, a2) for a1, a2 in zip(ant1,ant2) if a1 != a2],axis=0)
     
@@ -521,8 +517,6 @@ def compress_visdata(zarr_output_path:str,
     
     
     tasks = []
-    baseline_total = len(baselines)*len(corr_list_user)
-    # baseline_progress = tqdm(total=baseline_total, desc="Analyzing the MS.")
     if _global_progress:
         _global_progress.set_description("Processing baselines for SVD compression")
         
@@ -534,7 +528,6 @@ def compress_visdata(zarr_output_path:str,
         antenna2 = int(antenna2)
         baseline_mask = (ant1 == antenna1) & (ant2 == antenna2)
         baseline_data = maintable_copy.isel(row = baseline_mask)
-        # baseline_data = maintable.isel(row=np.flatnonzero(baseline_mask))
         row_idx = baseline_data.coords['ROWID'].data
 
         
@@ -578,7 +571,6 @@ def compress_visdata(zarr_output_path:str,
                 save_task = delayed(write_svd_to_zarr)(task, save_path,compressor,level,off_diag_row_idx)
                 tasks.append(save_task)
                 
-                # baseline_progress.update(1)
                 processed_baselines += 1
                 if _global_progress:
                     _global_progress.update(1) 
@@ -643,6 +635,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                 nthreads:int,
                 memory_limit:str,
                 direct_to_workers:bool,
+                silence_logs:str,
                 correlation:str,
                 correlation_optimized:bool,
                 fieldid:int,
@@ -650,6 +643,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                 scan:int,
                 column:str,
                 outcolumn:str,
+                dashboard_addr:str=None,
                 use_model_data:bool=False,
                 model_data:str=None,
                 flag_estimate:bool=False,
@@ -712,7 +706,9 @@ def compress_full_ms(ms_path:str, zarr_path:str,
     if not os.path.exists(ms_path):
         raise ValueError(f"Measurement Set path does not exist: {ms_path}")
 
-    client = setup_dask_client(memory_limit=memory_limit,nworkers=nworkers,nthreads=nthreads,direct_to_workers=direct_to_workers)
+    client = setup_dask_client(memory_limit=memory_limit,nworkers=nworkers,nthreads=nthreads,
+                               direct_to_workers=direct_to_workers,
+                               silence_logs=silence_logs, dashboard_addr=dashboard_addr)
 
     work_breakdown = calculate_total_work(ms_path, correlation, correlation_optimized, antennas)
     total_work = sum(work_breakdown.values())
@@ -805,13 +801,11 @@ def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: 
         return [f for f in os.listdir(ms_path) if os.path.isdir(os.path.join(ms_path, f))]
     
     subtables = list_subtables(ms_path)
-    
-    # Try to estimate baselines from MS structure
+
     try:
-        # Quick peek at the MS to get antenna info
         temp_ds = xds_from_table(ms_path)
         if temp_ds:
-            sample_ds = temp_ds[0]  # Get first dataset chunk
+            sample_ds = temp_ds[0] 
             ant1 = sample_ds.ANTENNA1.values
             ant2 = sample_ds.ANTENNA2.values
             
@@ -826,15 +820,13 @@ def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: 
             
             corr_list_user = correlation.split(',')
             if correlation_optimized:
-                # Optimized mode processes fewer combinations
                 baseline_work = len(baselines) * (len(corr_list_user)/2)
             else:
                 baseline_work = len(baselines) * len(corr_list_user)
     except:
-        # Fallback estimate
+        #Fallback estimate
         baseline_work = 250
     
-    # Return work breakdown
     return {
         'ms_to_zarr': 1 + len(subtables),  # Main table + subtables
         'flag_processing': 1,
