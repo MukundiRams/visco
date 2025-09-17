@@ -1,0 +1,34 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.4.0
+        virtualenvs-create: true
+        installer-parallel: false
+    - name: Install package
+      run: |
+        poetry install --with docs --no-interaction
+    - name: Build and publish to pypi
+      uses: JRubics/poetry-publish@v1.16
+      with:
+        pypi_token: ${{ secrets.VISCO_PYPI_TOKEN }}
+        
