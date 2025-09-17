@@ -2,6 +2,7 @@ import logging
 import os
 from importlib import metadata
 from omegaconf import OmegaConf
+from dask.distributed import Client, LocalCluster
 
 __version__ = metadata.version(__package__)
 
@@ -32,26 +33,52 @@ BIN = OmegaConf.create({"visco": "visco",
                         })
 
 
-from dask.distributed import Client, LocalCluster
 
 
-def setup_dask_client(memory_limit:str,nworkers:int,nthreads:int,direct_to_workers:bool):
+def setup_dask_client(memory_limit:str,nworkers:int,nthreads:int,direct_to_workers:bool,silence_logs:bool,dashboard_addr:str=None)->Client:
     """
     Set up a Dask client based on system resources.
     """
-    
+    if silence_logs == True:
+        logging.getLogger("distributed").setLevel(logging.ERROR)
+        logging.getLogger("dask").setLevel(logging.ERROR)
+        logging.getLogger("asyncio").setLevel(logging.ERROR)
+    elif silence_logs == False:
+        logging.getLogger("distributed").setLevel(logging.INFO)
+        logging.getLogger("dask").setLevel(logging.INFO)
+        logging.getLogger("asyncio").setLevel(logging.INFO)
+        
+    else:
+        logging.getLogger("distributed").setLevel(logging.WARNING)
+        logging.getLogger("dask").setLevel(logging.WARNING)
+        logging.getLogger("asyncio").setLevel(logging.WARNING)
+       
     cluster = LocalCluster(
         n_workers=nworkers, 
         threads_per_worker=nthreads,
         memory_limit=memory_limit,
         processes=True, 
         asynchronous=False, 
-        silence_logs=logging.ERROR,
+        silence_logs=silence_logs,
+        dashboard_address=dashboard_addr
     )
     
     client = Client(cluster,direct_to_workers=direct_to_workers
                     )
     
-    client.wait_for_workers(nworkers)
+    try:
+        client.wait_for_workers(nworkers, timeout=10)
+    except TimeoutError:
+        logging.warning("Timeout waiting for workers; continuing with what we have.")
+    
+
+    try:
+        print("Dask client created.")
+        print("  scheduler:", cluster.scheduler_address)
+        print("  dashboard_link:", getattr(client, "dashboard_link", None))
+        print("  cluster.dashboard_address:", getattr(cluster, "dashboard_address", None))
+        
+    except Exception as e:
+        logging.exception("Error printing dask debug info: %s", e)
   
     return client
