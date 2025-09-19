@@ -24,6 +24,12 @@ jobs:
         version: 1.4.0
         virtualenvs-create: true
         installer-parallel: false
+
+    - name: Set project version from tag
+      run: |
+        TAG_VERSION=${GITHUB_REF#refs/tags/}
+        echo "Bumping project version to $TAG_VERSION"
+        poetry version $TAG_VERSION
     - name: Install package
       run: |
         poetry install --with docs --no-interaction
