@@ -8,8 +8,8 @@ visco (Visibility Compression)
 
 Application for:
 
-1. Compressing and archiving visibility data using Singular Value Decomposition techniques (SVD).
-2. Decompressing the archived data from a zarr file to `MS files <https://casa.nrao.edu/Memos/229.html>`_
+1. Compressing visibility data using Singular Value Decomposition techniques (SVD).
+2. Decompressing the compressed data from a zarr file to `MS files <https://casa.nrao.edu/Memos/229.html>`_
 
 
 
