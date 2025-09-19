@@ -3,10 +3,10 @@
 Reference
 ###########
 
-Visibility Data Compression (``archival``)
+Visibility Data Compression (``visco compressms``)
 ==================================================
 
 
 
-Decompression (``decompression``)
+Decompression (``visco decompressms``)
 =========================================
