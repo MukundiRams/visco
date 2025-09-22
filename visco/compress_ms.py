@@ -644,6 +644,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
                 column:str,
                 outcolumn:str,
                 dashboard_addr:str=None,
+                host_addr:str=None,
                 use_model_data:bool=False,
                 model_data:str=None,
                 flag_estimate:bool=False,
@@ -708,7 +709,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
 
     client = setup_dask_client(memory_limit=memory_limit,nworkers=nworkers,nthreads=nthreads,
                                direct_to_workers=direct_to_workers,
-                               silence_logs=silence_logs, dashboard_addr=dashboard_addr)
+                               silence_logs=silence_logs, dashboard_addr=dashboard_addr,host_addr=host_addr)
 
     work_breakdown = calculate_total_work(ms_path, correlation, correlation_optimized, antennas)
     total_work = sum(work_breakdown.values())

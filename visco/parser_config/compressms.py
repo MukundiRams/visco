@@ -53,6 +53,7 @@ def compressrunit(**kwargs):
     direct_to_workers = opts.direct_to_workers
     silence_logs = opts.silence_logs
     dashboard_addr = opts.dashboard_address
+    host_addr = opts.host_address
     
     compress_ms.compress_full_ms(ms_path=ms, zarr_path=zarr_path, 
                                  consolidated=consolidated,
@@ -70,6 +71,7 @@ def compressrunit(**kwargs):
                                  fieldid=fieldid, ddid=ddid,scan=scan,
                                  column=column, outcolumn=outcolumn,
                                  dashboard_addr=dashboard_addr,
+                                 host_addr=host_addr,
                                  use_model_data=use_model_data, model_data=model_data,
                                  flag_estimate=flag_estimate, decorrelation=decorrelation,
                                  compressionrank=compressionrank,flagvalue=flagvalue,

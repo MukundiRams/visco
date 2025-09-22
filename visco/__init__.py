@@ -33,9 +33,8 @@ BIN = OmegaConf.create({"visco": "visco",
                         })
 
 
-
-
-def setup_dask_client(memory_limit:str,nworkers:int,nthreads:int,direct_to_workers:bool,silence_logs:bool,dashboard_addr:str=None)->Client:
+def setup_dask_client(memory_limit:str,nworkers:int,nthreads:int,direct_to_workers:bool,
+                      silence_logs:bool,dashboard_addr:str=None,host_addr:str=None)->Client:
     """
     Set up a Dask client based on system resources.
     """
@@ -52,33 +51,46 @@ def setup_dask_client(memory_limit:str,nworkers:int,nthreads:int,direct_to_worke
         logging.getLogger("distributed").setLevel(logging.WARNING)
         logging.getLogger("dask").setLevel(logging.WARNING)
         logging.getLogger("asyncio").setLevel(logging.WARNING)
-       
-    cluster = LocalCluster(
-        n_workers=nworkers, 
-        threads_per_worker=nthreads,
-        memory_limit=memory_limit,
-        processes=True, 
-        asynchronous=False, 
-        silence_logs=silence_logs,
-        dashboard_address=dashboard_addr
-    )
     
-    client = Client(cluster,direct_to_workers=direct_to_workers
-                    )
-    
+    host_address = host_addr or os.environ.get("DASK_SCHEDULER_ADDRESS")
+    if host_addr is not None:
+        print(f"Connecting to Dask scheduler at {host_address}...")
+        client = Client(host_address)
+        
+        try:
+            print("Dask client created.")
+            print("  dashboard_link:", getattr(client, "dashboard_link", None))
+        
+        except Exception as e:
+            logging.exception("Error printing dask debug info: %s", e)
+        
+    else:
+        print("Setting up local Dask cluster...")
+        cluster = LocalCluster(
+            n_workers=nworkers, 
+            threads_per_worker=nthreads,
+            memory_limit=memory_limit,
+            processes=True, 
+            asynchronous=False, 
+            silence_logs=silence_logs,
+            dashboard_address=dashboard_addr
+        )
+        
+        client = Client(cluster,direct_to_workers=direct_to_workers
+                        )
+        
+        try:
+            print("Dask client created.")
+            print("  scheduler:", cluster.scheduler_address)
+            print("  dashboard_link:", getattr(client, "dashboard_link", None))
+            print("  cluster.dashboard_address:", getattr(cluster, "dashboard_address", None))
+        
+        except Exception as e:
+            logging.exception("Error printing dask debug info: %s", e)
+        
     try:
         client.wait_for_workers(nworkers, timeout=10)
     except TimeoutError:
         logging.warning("Timeout waiting for workers; continuing with what we have.")
-    
 
-    try:
-        print("Dask client created.")
-        print("  scheduler:", cluster.scheduler_address)
-        print("  dashboard_link:", getattr(client, "dashboard_link", None))
-        print("  cluster.dashboard_address:", getattr(cluster, "dashboard_address", None))
-        
-    except Exception as e:
-        logging.exception("Error printing dask debug info: %s", e)
-  
     return client
