@@ -28,7 +28,7 @@ To compress the visibility data, run:
 
 ::
 
-   visco compressms -ms stimela_scripts/msdir/meerkat-sim.ms/ -zs meerkat-sim.zarr -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600
+   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600
 
 where:
 
