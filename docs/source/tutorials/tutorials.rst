@@ -11,6 +11,7 @@ Point Source Simulation at Phase Centre with KAT-7
 - The telescope is simulated with a 1-hour observation, using an integration time of 2 seconds.
 - The starting frequency is 1.4 GHz, with 64 channels, each with a width of 100 kHz.
 - The source is unpolarized with a total intensity of 1 Jy.
+- The full rank of the data is min(timeslots,channels)=64.
 
 Original image produced using WSClean:
 
