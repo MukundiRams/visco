@@ -62,7 +62,7 @@ where:
 
 After decompression, the output image (produced using WSClean) is:
 
-.. image:: kat7-sim-image-decompressed.png
+.. image:: kat7-sim-decompressed-image.png
    :alt: Image after compressing the visibility data
    :width: 400px
    :align: center
