@@ -14,7 +14,7 @@ Point Source Simulation at Phase Centre with KAT-7
 
 Original image produced using WSClean:
 
-.. image:: tutorials/kat7-sim-image.fits
+.. image:: kat7-sim-image.fits
    :alt: Original Image
    :width: 400px
    :align: center
@@ -62,7 +62,7 @@ where:
 
 After decompression, the output image (produced using WSClean) is:
 
-.. image:: tutorials/kat7-sim-image-decompressed.fits
+.. image:: kat7-sim-image-decompressed.fits
    :alt: Image after compressing the visibility data
    :width: 400px
    :align: center
