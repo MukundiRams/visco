@@ -3,7 +3,7 @@
 Tutorials
 #########
 
-This tutorial demonstrates how to use **visco** for compressing and decompressing radio interferometric data. We generate a Measurement Set (MS) and synthetic visibilities using `simms` and MeqTrees, respectively.
+This tutorial demonstrates how to use **visco** for compressing and decompressing radio interferometric data. We generate a Measurement Set (MS) and synthetic visibilities using `simms` and MeqTrees through the Stimela framework.
 
 Point Source Simulation at Phase Centre with KAT-7
 ==================================================
@@ -21,6 +21,13 @@ Original image produced using WSClean:
    :align: center
 
 Using CARTA, we measure the peak flux of the image to be \(1.233 \times 10^{0}\) Jy/beam and the RMS to be \(1.285 \times 10^{-1}\) Jy/beam.
+
+Installing visco
+-----------------
+::
+
+   pip install visco
+
 
 Compressing the Visibility Data
 ------------------------------
