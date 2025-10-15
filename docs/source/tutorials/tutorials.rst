@@ -14,7 +14,7 @@ Point Source Simulation at Phase Centre with KAT-7
 
 Original image produced using WSClean:
 
-.. image:: kat7-sim-image.fits
+.. image:: kat7-sim-image.png
    :alt: Original Image
    :width: 400px
    :align: center
@@ -62,13 +62,17 @@ where:
 
 After decompression, the output image (produced using WSClean) is:
 
-.. image:: kat7-sim-image-decompressed.fits
+.. image:: kat7-sim-image-decompressed.png
    :alt: Image after compressing the visibility data
    :width: 400px
    :align: center
 
 The image produced from the compressed visibility data has a peak flux of \(1.249 \times 10^{0}\) Jy/beam and an RMS of \(1.314 \times 10^{-1}\) Jy/beam.
 
+**SNR:**
+The SNR for the original image is 9.595 and for the image after compression, its 9.505.
+
 **Disk usage:**  
 The original MS occupies 228 MB, while the compressed Zarr store uses only 15 MB of disk space.
+
 
