@@ -29,12 +29,13 @@ To compress the visibility data, run:
 
 ::
 
-   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600
+   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600
 
 where:
 
 - `-ms` gives the path to the measurement set,
 - `-zs` specifies the output Zarr store,
+- `-col` specifies the column containing the visibility data,
 - `-corr` defines the correlations to compress,
 - `-cr` is the desired compression rank,
 - `-nw` sets the number of Dask workers,
@@ -82,7 +83,7 @@ Although our simulation so far includes an unpolarized source where the XY and Y
 
 ::
 
-   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600 --correlation-optimized
+   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600 --correlation-optimized
 
 This compression produces the following image:
 
