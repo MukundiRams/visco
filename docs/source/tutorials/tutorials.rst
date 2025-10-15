@@ -1,58 +1,102 @@
-=========
+.. _tutorials:
+
 Tutorials
-=========
+#########
 
-Optimized Compression with Correlation Combining
--------------------------------------------------
+This tutorial demonstrates how to use **visco** for compressing and decompressing radio interferometric data. We generate a Measurement Set (MS) and synthetic visibilities using `simms` and MeqTrees, respectively.
 
-Overview
-~~~~~~~~
+Point Source Simulation at Phase Centre with KAT-7
+==================================================
 
-For unpolarized sources, the cross-correlation products (XY and YX) contribute minimal signal. Combining correlations during compression can significantly improve computational speed and further reduce storage requirements.
+- The telescope is simulated with a 1-hour observation, using an integration time of 2 seconds.
+- The starting frequency is 1.4 GHz, with 64 channels, each with a width of 100 kHz.
+- The source is unpolarized with a total intensity of 1 Jy.
+- The full rank of the data is min(timeslots,channels) = 64.
 
-Optimized Compression Command
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Original image produced using WSClean:
 
-To enable correlation optimization, add the ``--correlation-optimized`` flag:
+.. image:: kat7-sim-image.png
+   :alt: Original Image
+   :width: 400px
+   :align: center
+
+Using CARTA, we measure the peak flux of the image to be \(1.233 \times 10^{0}\) Jy/beam and the RMS to be \(1.285 \times 10^{-1}\) Jy/beam.
+
+Compressing the Visibility Data
+------------------------------
+
+To compress the visibility data, run:
+
+::
+
+   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600
+
+where:
+
+- `-ms` gives the path to the measurement set,
+- `-zs` specifies the output Zarr store,
+- `-corr` defines the correlations to compress,
+- `-cr` is the desired compression rank,
+- `-nw` sets the number of Dask workers,
+- `-nt` specifies the number of threads per worker,
+- `-ml` sets the memory limit,
+- `-da` is the dashboard address,
+- `-csr` is the chunk size along the row.
+
+We compressed the data with a compression rank of 1, retaining only the components corresponding to the first singular value.
+
+After compression, the data is stored as `meerkat-sim.zarr`.
+
+Decompressing the Compressed Data
+---------------------------------
+
+To decompress back into an MS for imaging, run:
+
+::
+
+   visco decompressms -zp kat7-sim.zarr/ -ms kat7-sim-decompressed.ms
+
+where:
+
+- `-zp` provides the path to the Zarr store containing the compressed data,
+- `-ms` sets the output MS file.
+
+After decompression, the output image (produced using WSClean) is:
+
+.. image:: kat7-sim-decompressed-image.png
+   :alt: Image after compressing the visibility data
+   :width: 400px
+   :align: center
+
+The image produced from the compressed visibility data has a peak flux of \(1.249 \times 10^{0}\) Jy/beam and an RMS of \(1.314 \times 10^{-1}\) Jy/beam.
+
+**Disk usage:**  
+The original MS occupies 228 MB, while the compressed Zarr store uses only 15 MB of disk space.
+
+Combining Correlations
+----------------------
+
+Compressing the visibility data using SVD is computationally expensive because the operation must be performed for each baseline and correlation product. To reduce computational cost, you can choose to combine correlations. This approach optimizes compression by grouping the XX & YY and XY & YX correlations together.
+
+Although our simulation so far includes an unpolarized source where the XY and YX correlations contribute minimally, we can still test this approach. To do so, simply add the ``--correlation-optimized`` flag:
 
 ::
 
    visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600 --correlation-optimized
 
-Benefits
-~~~~~~~~
+This compression produces the following image:
 
-1. **Computational efficiency:** Reduces processing time by compressing combined correlation products
-2. **Storage savings:** Further reduces disk usage compared to standard compression
-3. **Maintained fidelity:** Preserves image quality for unpolarized sources
-
-Imaging Results
-~~~~~~~~~~~~~~~
-
-The image produced with correlation optimization:
-
-.. image:: kat7-sim-corropt-image.png
-   :alt: Image after compressing with correlation optimization
+.. image:: kat7-sim-corropt.png
+   :alt: Image after compressing the visibility data by combining correlations
    :width: 400px
    :align: center
 
-Storage Comparison
-~~~~~~~~~~~~~~~~~~
+The image produced has a peak flux of \(1.248 \times 10^{0}\) Jy/beam and an RMS of \(1.314 \times 10^{-1}\) Jy/beam.
 
-- **Original measurement set:** 228 MB
-- **Standard compressed Zarr:** 15 MB
-- **Optimized compressed Zarr:** 9 MB
+**Disk usage:**
+This correlation optimization also reduces storage requirements, with only 9 MB required.
 
-The correlation-optimized approach provides a compression ratio of approximately **25:1**, offering substantial storage savings for unpolarized data.
 
-Summary
--------
 
-The **visco** package provides efficient compression of radio interferometry visibility data:
 
-1. **Standard compression** (rank 1): Reduces 228 MB to 15 MB (~15:1 ratio)
-2. **Optimized compression** (correlation combining): Reduces 228 MB to 9 MB (~25:1 ratio)
-3. **Image quality:** Minimal degradation (SNR: 9.595 → 9.505)
-4. **Use case:** Ideal for archiving, data transfer, and processing large interferometric datasets
 
-These compression techniques enable more efficient storage and handling of large-scale radio astronomy data while maintaining scientific integrity.
