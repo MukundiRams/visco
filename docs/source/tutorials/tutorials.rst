@@ -86,7 +86,7 @@ Although our simulation so far includes an unpolarized source where the XY and Y
 
 This compression produces the following image:
 
-.. image:: kat7-sim-corropt.png
+.. image:: kat7-sim-corropt-image.png
    :alt: Image after compressing the visibility data by combining correlations
    :width: 400px
    :align: center
