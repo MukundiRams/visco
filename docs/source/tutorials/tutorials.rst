@@ -22,11 +22,12 @@ Original image produced using WSClean:
 
 **Statistics:**
 
-We use CARTA to open the images and measure the statistics.
+We use CARTA to open the images and measure the statistics:
 
-- Peak flux:  :math: `1.000429391861 \times 10^{0}` Jy/beam 
-- RMS: :math: 1.439807312603 \times 10^{-1} Jy/beam.
-- SNR: 6.9484
+- **Peak flux:** \(:math:`1.000429391861 \times 10^{0}`\) Jy/beam
+- **RMS:** \(:math:`1.439807312603 \times 10^{-1}`\) Jy/beam
+- **SNR:** 6.9484
+
 
 **Disk usage:**
 The MS occupies 228 MB of disk storage.
