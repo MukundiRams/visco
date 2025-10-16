@@ -116,7 +116,26 @@ This compression produces the following image:
 
 
 **Disk usage:**
-This correlation optimization also reduces storage requirements, with only 9 MB required.
+This correlation optimization also reduces storage requirements, with only 9 MB required for the Zarr store.
+
+
+Multiple Point Sources with the MeerKAT Telescope
+===================================================
+
+Now, lets focus on the MeerKAT telescope. Using the same simulation settings as the ones we used for KAT-7, we simulate 10 point sources. All 10 point sources are unpolarized with total intensity of 1 Jy.
+
+For this simulation, we get this image:
+
+.. image:: meerkat-sim-dirty.png
+   :alt: Original image for the MeerKAT simulation
+   :width: 400px
+   :align: center
+
+**Statistics:**
+For the source furthest from the phase centre.
+- **Peak flux:** \(:math:`9.556545019150 \times 10^{-1}`\) Jy/beam
+- **RMS:** \(:math:`1.629931402737 \times 10^{-2}`\) Jy/beam
+- **SNR:** 58.6316
 
 
 
