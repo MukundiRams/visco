@@ -20,7 +20,7 @@ Original image produced using WSClean:
    :width: 400px
    :align: center
 
-Using CARTA, we measure the peak flux of the image to be :math: 1.000429391861 \times 10^{0} Jy/beam and the RMS to be :math: 1.439807312603 \times 10^{-1} Jy/beam.
+Using CARTA, we measure the peak flux of the image to be :math: `1.000429391861 \times 10^{0}` Jy/beam and the RMS to be :math: 1.439807312603 \times 10^{-1} Jy/beam.
 
 Compressing the Visibility Data
 ------------------------------
