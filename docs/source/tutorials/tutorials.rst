@@ -20,7 +20,17 @@ Original image produced using WSClean:
    :width: 400px
    :align: center
 
-Using CARTA, we measure the peak flux of the image to be :math: `1.000429391861 \times 10^{0}` Jy/beam and the RMS to be :math: 1.439807312603 \times 10^{-1} Jy/beam.
+**Statistics:**
+
+We use CARTA to open the images and measure the statistics.
+
+Peak flux:  :math: `1.000429391861 \times 10^{0}` Jy/beam 
+RMS: :math: 1.439807312603 \times 10^{-1} Jy/beam.
+SNR: 6.9484
+
+**Disk usage:**
+The MS occupies 228 MB of disk storage.
+
 
 Compressing the Visibility Data
 ------------------------------
@@ -69,10 +79,14 @@ After decompression, the output image (produced using WSClean) is:
    :width: 400px
    :align: center
 
-The image produced from the compressed visibility data has a peak flux of :math: 1.000427842140 \times 10^{0} Jy/beam and an RMS of :math: 1.439824590852 \times 10^{-1} Jy/beam.
+**Statistics:**
+
+Peak flux: :math: 1.000427842140 \times 10^{0} Jy/beam 
+RMS: :math: 1.439824590852 \times 10^{-1} Jy/beam.
+SNR: 6.9483
 
 **Disk usage:**  
-The original MS occupies 228 MB, while the compressed Zarr store uses only 15 MB of disk space.
+The compressed Zarr store uses only 15 MB of disk space.
 
 Combining Correlations
 ----------------------
@@ -92,7 +106,11 @@ This compression produces the following image:
    :width: 400px
    :align: center
 
-The image produced has a peak flux of :math: 1.000429391861  \times 10^{0} Jy/beam and an RMS of :math: 1.439828319666 \times 10^{-1} Jy/beam.
+**Statistics:**
+
+Peak flux: :math: 1.000429391861  \times 10^{0} Jy/beam 
+RMS: :math: 1.439828319666 \times 10^{-1} Jy/beam.
+SNR: 6.9483
 
 **Disk usage:**
 This correlation optimization also reduces storage requirements, with only 9 MB required.
