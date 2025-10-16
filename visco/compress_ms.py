@@ -470,6 +470,9 @@ def compress_visdata_batched(zarr_output_path: str,
     write_a_group_to_zarr(zarr_output_path, 'FLAGS_ROW', flags_row_packed)
     write_a_group_to_zarr(zarr_output_path, 'FLAGS', flags_packed)
     
+    if _global_progress:
+        _global_progress.update(1)
+    
     #Process weight spectrum
     if "WEIGHT_SPECTRUM" in maintable.data_vars:
         if _global_progress:
@@ -481,6 +484,9 @@ def compress_visdata_batched(zarr_output_path: str,
         write_svd_to_zarr(wscomps, ws_path, compressor, level, maintable.coords['ROWID'].values)
         delete_zarr_groups(zarr_output_path, "MAIN/WEIGHT_SPECTRUM")
         delete_zarr_groups(zarr_output_path, "MAIN/SIGMA_SPECTRUM")
+        
+        if _global_progress:
+            _global_progress.update(1)
     
     ant1 = maintable.ANTENNA1.values
     ant2 = maintable.ANTENNA2.values
@@ -628,15 +634,20 @@ def compress_visdata_batched(zarr_output_path: str,
             if _global_progress:
                 _global_progress.update(1)
         
-        #compute this batch before moving to the next
         if batch_tasks:
             if _global_progress:
                 _global_progress.set_description(f"Computing batch {batch_num+1}/{len(baseline_batches)}")
-            
+                
             with TqdmCallback(desc=f"Batch {batch_num+1}"):
                 dask.compute(*batch_tasks)
+            
+            if _global_progress:
+                processed_baselines += len(baseline_batch)
+                _global_progress.update(len(baseline_batch))
+                _global_progress.set_description(f"Processed {processed_baselines}/{total_baselines} baselines")
     
     return processed_baselines
+
 
 def write_a_group_to_zarr(zarr_path:str, group:str, data:np.ndarray):
     """
@@ -829,7 +840,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
         level=level
     )
     
-    _global_progress.set_description("Processing visibility data with batching")
+    _global_progress.set_description("Processing visibility data")
     
     
     processed = compress_visdata_batched(
@@ -863,6 +874,8 @@ def compress_full_ms(ms_path:str, zarr_path:str,
         delete_zarr_groups(zarr_output_path, f"MAIN/{model_data}")
     
     _global_progress.update(work_breakdown['cleanup'])
+    if _global_progress:
+        _global_progress.update(1)  
     _global_progress.set_description("✅ MS compression completed successfully!")
     
     client.close()
@@ -893,17 +906,18 @@ def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: 
                     if a1 != a2:
                         unique_baselines.add((min(a1, a2), max(a1, a2)))
                 baselines = list(unique_baselines)
+            baseline_work = len(baselines)
             
-            corr_list_user = correlation.split(',')
-            num_batches = (len(baselines) + batch_size - 1) // batch_size
-            if correlation_optimized:
-                baseline_work = num_batches
-                if 'XX' in corr_list_user and 'YY' in corr_list_user:
-                    baseline_work += num_batches
-                if 'XY' in corr_list_user and 'YX' in corr_list_user:
-                    baseline_work += num_batches
-            else:
-                baseline_work = num_batches * len(corr_list_user)
+            # corr_list_user = correlation.split(',')
+            # num_batches = (len(baselines) + batch_size - 1) // batch_size
+            # if correlation_optimized:
+            #     baseline_work = num_batches
+            #     if 'XX' in corr_list_user and 'YY' in corr_list_user:
+            #         baseline_work += num_batches
+            #     if 'XY' in corr_list_user and 'YX' in corr_list_user:
+            #         baseline_work += num_batches
+            # else:
+            #     baseline_work = num_batches * len(corr_list_user)
 
     except:
         #fallback estimates

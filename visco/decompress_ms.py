@@ -9,10 +9,43 @@ import dask
 from dask import delayed
 import os
 import shutil
-from omegaconf import OmegaConf
-from daskms import xds_to_table, xds_from_table
+from daskms import xds_to_table
 import visco
 log = visco.get_logger(name="VISCO")
+from tqdm import tqdm
+import sys
+
+class UnifiedProgressBar:
+    def __init__(self):
+        self.pbar = None
+        self.total_steps = 0
+        self.current_step = 0
+        
+    def start_progress(self, total_steps, initial_desc="Starting..."):
+        """Start the master progress bar with total number of steps"""
+        if self.pbar is not None:
+            self.pbar.close()
+        self.total_steps = total_steps
+        self.current_step = 0
+        self.pbar = tqdm(total=total_steps, desc=initial_desc, file=sys.stdout,
+                        bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}] {desc}')
+        
+    def update_step(self, description=None):
+        """Move to next step and update description"""
+        self.current_step += 1
+        if self.pbar is not None:
+            self.pbar.update(1)
+            if description:
+                self.pbar.set_description(description)
+                
+    def close(self):
+        """Close the progress bar"""
+        if self.pbar is not None:
+            self.pbar.close()
+            self.pbar = None
+
+
+progress = UnifiedProgressBar()
 
 def write_subtable(zarr_path: str, msname: str, group: str):
     """
@@ -89,7 +122,6 @@ def reconstruct_vis(U: da.Array, S: da.Array, Vt: da.Array) -> da.Array:
     if S.ndim == 2:
         S = S[:, 0]  
     
-    
     S_reshaped = S.reshape((1, S.shape[0]))
     
     U_mult_S = U * S_reshaped
@@ -113,6 +145,7 @@ def construct_main_ds(zarr_path: str, column: str):
     maintable dataset (xarray dataset)
     """
     
+    progress.update_step("Loading main table and antenna data")
     maintable = xr.open_zarr(zarr_path, group='MAIN', consolidated=True)
     antennas = xr.open_zarr(zarr_path, group='ANTENNA', consolidated=True)
     antnames = antennas.NAME.values
@@ -123,12 +156,14 @@ def construct_main_ds(zarr_path: str, column: str):
     rowid = maintable.coords['ROWID'].values
     chunks = maintable.DATA.chunks
 
-    
     reconstructed_data = da.zeros(data_shape, dtype=maintable.DATA.dtype, chunks=chunks)
     
     baselines = list_subtables(f"{zarr_path}/MAIN/{column}")
     
-    for baseline in baselines:
+   
+    for baseline_idx, baseline in enumerate(baselines):
+        progress.update_step(f"Reconstructing baseline {baseline_idx+1}/{len(baselines)}")
+        
         correlations = list_subtables(f"{zarr_path}/MAIN/{column}/{baseline}")
         ant1_name, ant2_name = baseline.split('&')
         try:
@@ -138,7 +173,6 @@ def construct_main_ds(zarr_path: str, column: str):
             log.warning(f"Baseline {baseline} not found in ANTENNA table. Skipping.")
             continue
         
-        
         baseline_mask = (ant1 == ant1_idx) & (ant2 == ant2_idx)
         row_indices = np.where(baseline_mask)[0]
         nrows = row_indices.size
@@ -147,7 +181,6 @@ def construct_main_ds(zarr_path: str, column: str):
         if not correlations:
             continue
             
-       
         tasks = []
         for corr_name in correlations:
             components = xr.open_zarr(f"{zarr_path}/MAIN/{column}/{baseline}/{corr_name}")
@@ -174,6 +207,8 @@ def construct_main_ds(zarr_path: str, column: str):
                 corr_idx = corr_indices[corr_name]
                 reconstructed_data[row_indices, :, corr_idx] = vis_reconstructed
 
+    progress.update_step("Loading and processing flag data")
+    
     flags_ds = xr.open_zarr(zarr_path, group='FLAGS', consolidated=True)
     flags_length = data_shape[0] * data_shape[1] * data_shape[2]
     flags = np.unpackbits(flags_ds.FLAGS.values, count=flags_length)
@@ -183,6 +218,9 @@ def construct_main_ds(zarr_path: str, column: str):
     flags_row = np.unpackbits(flag_row_ds.FLAGS_ROW.values, count=data_shape[0])
 
     if 'WEIGHT_SPECTRUM' in list_subtables(f"{zarr_path}"):
+        
+        progress.update_step("Processing weight spectrum")
+        
         weights = xr.open_zarr(f"{zarr_path}/WEIGHT_SPECTRUM", consolidated=True)
         weights_reconstructed = np.dot(weights.U.values, np.diag(weights.S.values))
         weights_expanded = np.expand_dims(weights_reconstructed, axis=-1)
@@ -197,6 +235,7 @@ def construct_main_ds(zarr_path: str, column: str):
                                         coords={"ROWID": ("row", rowid)})
         })
     
+    progress.update_step("Finalizing main table dataset")
     maintable = maintable.assign(**{
         'DATA': xr.DataArray(reconstructed_data, 
                             dims=("row", "chan", "corr"),
@@ -256,25 +295,42 @@ def write_datasets_to_ms(zarr_path: str, msname: str, column: str):
     -----
     None
     """  
-    if os.path.exists(msname):
-        shutil.rmtree(msname)
-       
-    maintable = construct_main_ds(zarr_path=zarr_path, column=column)    
-    write_main = xds_to_table(maintable, f"{msname}")
     
-    from dask.diagnostics import ProgressBar
-    with ProgressBar():
-        dask.compute(write_main) 
-    
-    
+    baselines = list_subtables(f"{zarr_path}/MAIN/{column}")
     zarr_folders = list_subtables(zarr_path)
     non_folders = ['MAIN', 'FLAGS', 'FLAG_ROW', 'WEIGHT_SPECTRUM']
+    subtable_count = len([f for f in zarr_folders if f not in non_folders])
+    
+    #Total steps: setup + baselines + flag processing + weight spectrum + finalize + write main + subtables + completion
+    total_steps = 1 + len(baselines) + 3 + 1 + subtable_count + 1
+    
+    progress.start_progress(total_steps, "Starting MS decompression...")
+    
+    if os.path.exists(msname):
+        progress.update_step("Removing existing MS")
+        shutil.rmtree(msname)
+    
+    maintable = construct_main_ds(zarr_path=zarr_path, column=column)
+    
+    progress.update_step("Writing main table to Measurement Set")    
+    write_main = xds_to_table(maintable, f"{msname}")
+    
+
+    progress.update_step("Computing main table (this may take a while)...")
+    dask.compute(write_main)
+  
+    
     tasks = []
     for folder in zarr_folders:
         if folder in non_folders:
             continue
+        progress.update_step(f"Writing subtable: {folder}")
         task = write_subtable(zarr_path, msname, folder)
         tasks.append(task)
         
+    progress.update_step("Finalizing Measurement Set")
     dask.compute(*tasks)
+    
+    progress.update_step("Measurement Set creation completed successfully")
+    progress.close()
     

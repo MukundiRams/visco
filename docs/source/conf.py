@@ -14,12 +14,13 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'visco'
 copyright = '2025, Mukundi Ramanyimi'
 author = 'Mukundi Ramanyimi'
+release = '1.0'
 
 release = visco.__version__
 version = visco.__version__
 
-
 templates_path = ['_templates']
+
 language = 'en'
 
 # -- Options for HTML output -------------------------------------------------
@@ -27,6 +28,9 @@ language = 'en'
 
 html_theme = 'furo'
 html_static_path = ['_static']
+
+
+
 needs_sphinx = "5.0"
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -34,11 +38,12 @@ needs_sphinx = "5.0"
 extensions = [
     "sphinx_copybutton",
     "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",
+    'sphinx.ext.napoleon',
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
 ]
+
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
