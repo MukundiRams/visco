@@ -82,9 +82,10 @@ After decompression, the output image (produced using WSClean) is:
 
 **Statistics:**
 
-- Peak flux: :math: 1.000427842140 \times 10^{0} Jy/beam 
-- RMS: :math: 1.439824590852 \times 10^{-1} Jy/beam.
-- SNR: 6.9483
+- **Peak flux:** \(:math:`1.000427842140 \times 10^{0}`\) Jy/beam
+- **RMS:** \(:math:`1.439824590852 \times 10^{-1}`\) Jy/beam
+- **SNR:** 6.9483
+
 
 **Disk usage:**  
 The compressed Zarr store uses only 15 MB of disk space.
@@ -109,9 +110,10 @@ This compression produces the following image:
 
 **Statistics:**
 
-- Peak flux: :math: 1.000429391861  \times 10^{0} Jy/beam 
-- RMS: :math: 1.439828319666 \times 10^{-1} Jy/beam.
-- SNR: 6.9483
+- **Peak flux:** \(:math:`1.000429391861 \times 10^{0}`\) Jy/beam
+- **RMS:** \(:math:`1.439828319666 \times 10^{-1}`\) Jy/beam
+- **SNR:** 6.9483
+
 
 **Disk usage:**
 This correlation optimization also reduces storage requirements, with only 9 MB required.
