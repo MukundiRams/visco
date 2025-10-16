@@ -15,12 +15,12 @@ Point Source Simulation at Phase Centre with KAT-7
 
 Original image produced using WSClean:
 
-.. image:: kat7-sim-image.png
+.. image:: kat7-sim-dirty.png
    :alt: Original Image
    :width: 400px
    :align: center
 
-Using CARTA, we measure the peak flux of the image to be \(1.233 \times 10^{0}\) Jy/beam and the RMS to be \(1.285 \times 10^{-1}\) Jy/beam.
+Using CARTA, we measure the peak flux of the image to be :math: 1.000429391861 \times 10^{0} Jy/beam and the RMS to be :math: 1.439807312603 \times 10^{-1} Jy/beam.
 
 Compressing the Visibility Data
 ------------------------------
@@ -64,12 +64,12 @@ where:
 
 After decompression, the output image (produced using WSClean) is:
 
-.. image:: kat7-sim-decompressed-image.png
+.. image:: kat7-sim-decompressed-dirty.png
    :alt: Image after compressing the visibility data
    :width: 400px
    :align: center
 
-The image produced from the compressed visibility data has a peak flux of \(1.249 \times 10^{0}\) Jy/beam and an RMS of \(1.314 \times 10^{-1}\) Jy/beam.
+The image produced from the compressed visibility data has a peak flux of :math: 1.000427842140 \times 10^{0} Jy/beam and an RMS of :math: 1.439824590852 \times 10^{-1} Jy/beam.
 
 **Disk usage:**  
 The original MS occupies 228 MB, while the compressed Zarr store uses only 15 MB of disk space.
@@ -87,12 +87,12 @@ Although our simulation so far includes an unpolarized source where the XY and Y
 
 This compression produces the following image:
 
-.. image:: kat7-sim-corropt-image.png
+.. image:: kat7-sim-corropt-dirty.png
    :alt: Image after compressing the visibility data by combining correlations
    :width: 400px
    :align: center
 
-The image produced has a peak flux of \(1.248 \times 10^{0}\) Jy/beam and an RMS of \(1.314 \times 10^{-1}\) Jy/beam.
+The image produced has a peak flux of :math: 1.000429391861  \times 10^{0} Jy/beam and an RMS of :math: 1.439828319666 \times 10^{-1} Jy/beam.
 
 **Disk usage:**
 This correlation optimization also reduces storage requirements, with only 9 MB required.
