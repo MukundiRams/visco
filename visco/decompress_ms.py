@@ -301,7 +301,7 @@ def write_datasets_to_ms(zarr_path: str, msname: str, column: str):
     non_folders = ['MAIN', 'FLAGS', 'FLAG_ROW', 'WEIGHT_SPECTRUM']
     subtable_count = len([f for f in zarr_folders if f not in non_folders])
     
-    #Total steps: setup + baselines + flag processing + weight spectrum + finalize + write main + subtables + completion
+    #total steps: setup + baselines + flag processing + weight spectrum + finalize + write main + subtables + completion
     total_steps = 1 + len(baselines) + 3 + 1 + subtable_count + 1
     
     progress.start_progress(total_steps, "Starting MS decompression...")

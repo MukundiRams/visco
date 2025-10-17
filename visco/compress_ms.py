@@ -21,7 +21,6 @@ import visco
 log = visco.get_logger(name="VISCO")
 from omegaconf import OmegaConf
 from visco import setup_dask_client
-import numcodecs
 from numcodecs import Blosc, Zstd, GZip
 
 CORR_TYPES = OmegaConf.load(f"{visco.PCKGDIR}/ms_corr_types.yaml").CORR_TYPES
@@ -462,7 +461,7 @@ def compress_visdata_batched(zarr_output_path: str,
     if _global_progress:
         _global_progress.set_description("Processing flags")
         
-    #Process flags
+    #process flags
     flags = maintable.FLAG.astype(bool).values
     flags_row = maintable.FLAG_ROW.astype(bool).values
     flags_packed = np.packbits(flags, axis=None)
@@ -473,7 +472,7 @@ def compress_visdata_batched(zarr_output_path: str,
     if _global_progress:
         _global_progress.update(1)
     
-    #Process weight spectrum
+    #process weight spectrum
     if "WEIGHT_SPECTRUM" in maintable.data_vars:
         if _global_progress:
             _global_progress.set_description("Compressing WEIGHT SPECTRUM")
@@ -920,7 +919,6 @@ def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: 
             #     baseline_work = num_batches * len(corr_list_user)
 
     except:
-        #fallback estimates
         baseline_work = 250
     
     return {
