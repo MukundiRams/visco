@@ -40,6 +40,7 @@ def compressrunit(**kwargs):
     corr_opt = opts.correlation_optimized
     column = opts.column
     outcolumn = opts.outcolumn
+    batch_size = opts.batch_size
     use_model_data = opts.use_model_data
     model_data = opts.model_data
     flag_estimate = opts.flagestimate
@@ -51,7 +52,6 @@ def compressrunit(**kwargs):
     nthreads = opts.nthreads
     memory_limit = opts.memory_limit
     direct_to_workers = opts.direct_to_workers
-    silence_logs = opts.silence_logs
     dashboard_addr = opts.dashboard_address
     host_addr = opts.host_address
     
@@ -64,12 +64,12 @@ def compressrunit(**kwargs):
                                  nthreads=nthreads,
                                  memory_limit=memory_limit,
                                  direct_to_workers=direct_to_workers,
-                                 silence_logs=silence_logs,
                                  level=level,
                                  correlation=correlation,
                                  correlation_optimized=corr_opt,
                                  fieldid=fieldid, ddid=ddid,scan=scan,
                                  column=column, outcolumn=outcolumn,
+                                 batch_size=batch_size,
                                  dashboard_addr=dashboard_addr,
                                  host_addr=host_addr,
                                  use_model_data=use_model_data, model_data=model_data,

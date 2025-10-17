@@ -1,12 +1,12 @@
-.. _reference:
+.. _API:
 
-Reference
-###########
+API
+======
 
-Visibility Data Compression (``visco compressms``)
-==================================================
+.. toctree::
+    :maxdepth: 2
+    :caption: Contents:
 
-
-
-Decompression (``visco decompressms``)
-=========================================
+    compressms_reference
+    decompressms_reference
+    

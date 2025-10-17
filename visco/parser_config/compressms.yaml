@@ -68,12 +68,6 @@ inputs:
     default: True
     abbreviation: dtw
   
-  silence_logs:
-    info: Whether to silence Dask worker logs. Default is True.
-    dtype: bool
-    default: True
-    abbreviation: sl
-  
   dashboard_address:
     info: Address for the Dask dashboard (e.g., ':8787') for Local Cluster. Default is None (no dashboard).
     dtype: str
@@ -126,6 +120,12 @@ inputs:
     dtype: str
     default: COMPRESSED_DATA
     abbreviation: oc
+  
+  batch_size:
+    info: Number of baselines to process in each batch. Increasing this can improve performance.
+    dtype: int
+    default: 20
+    abbreviation: bs
 
   use_model_data:
     info: Whether to use model data to estimate the visibility flagged data. This is the recommended method.
