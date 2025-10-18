@@ -22,7 +22,7 @@ Original image produced using WSClean:
 
 **Statistics:**
 
-We use CARTA to open the images and measure the statistics:
+Note that we use dirty images here since the compression can affect the Point Spread Function (PSF). We use CARTA to open the images and measure the statistics:
 
 - **Peak flux:** \(:math:`1.000429391861 \times 10^{0}`\) Jy/beam
 - **RMS:** \(:math:`1.439807312603 \times 10^{-1}`\) Jy/beam
@@ -40,7 +40,7 @@ To compress the visibility data, run:
 
 ::
 
-   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600
+   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 3600
 
 where:
 
@@ -55,9 +55,7 @@ where:
 - `-da` is the dashboard address,
 - `-csr` is the chunk size along the row.
 
-We compressed the data with a compression rank of 1, retaining only the components corresponding to the first singular value.
-
-After compression, the data is stored as `meerkat-sim.zarr`.
+We compressed the data with a compression rank of 1, retaining only the components corresponding to the first singular value. The compression results are stored as `meerkat-sim.zarr`. In this Zarr store, the data are stored as separate components U,S,V for each correlation and baseline. U,S, and V correspond to the resulting matrices from singular value decomposition (SVD).
 
 Decompressing the Compressed Data
 ---------------------------------
@@ -99,7 +97,7 @@ Although our simulation so far includes an unpolarized source where the XY and Y
 
 ::
 
-   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 16GB -da 2727 -csr 3600 --correlation-optimized
+   visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 3600 --correlation-optimized
 
 This compression produces the following image:
 
@@ -132,10 +130,29 @@ For this simulation, we get this image:
    :align: center
 
 **Statistics:**
-For the source furthest from the phase centre.
+For the source furthest from the phase centre:
+
 - **Peak flux:** \(:math:`9.556545019150 \times 10^{-1}`\) Jy/beam
 - **RMS:** \(:math:`1.629931402737 \times 10^{-2}`\) Jy/beam
 - **SNR:** 58.6316
+
+The compression for the MeerKAT telescope is extremely computationally expensive as there are 2016 baselines, so we add the --batch-size flag, which let us decide the number of the baselines to process at the same time. We still choose to compress using the first singular value.
+
+::
+
+   visco compressms -ms meerkat-sim.ms/ -zs meerkat-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 10000 -bs 200
+
+where:
+- `-bs` determine the batch size or the number of baselines to process at once.
+
+
+
+
+
+
+
+
+
 
 
 
