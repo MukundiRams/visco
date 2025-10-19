@@ -108,7 +108,7 @@ Disk usage
 -----------
 The Zarr store containing the compressed visibility data, along with the rest of the MS data, occupies only 15 MB.
 
-Tutorial 2:cImproving Compression Speed using Correlations 
+Tutorial 2: Improving Compression Speed using Correlations 
 ===========================================================
 
 Compressing the visibility data using SVD is computationally expensive. Futhermore, the process is performed for each baseline and correlation product. To reduce the computational cost, one can choose to combine correlations. This approach speeds up the compression by grouping the XX & YY and XY & YX correlations together.
@@ -138,6 +138,7 @@ Statistics
 - **SNR:** 6.9483
 
 Smearing
+----------
 We note here, too, that there is no smearing effects incurred by the compression.
 
 Disk usage
