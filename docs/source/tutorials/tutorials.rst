@@ -3,40 +3,51 @@
 Tutorials
 #########
 
-This tutorial demonstrates how to use **visco** for compressing and decompressing radio interferometric data. We generate a Measurement Set (MS) and synthetic visibilities using `simms` and MeqTrees, respectively.
+This tutorial demonstrates how to use **visco** for compressing and decompressing radio interferometric data. We generate a Measurement Set (MS) and synthetic visibilities using **simms** and **MeqTrees**, respectively.
 
-Point Source Simulation at Phase Centre with KAT-7
-==================================================
+Tutorial 1: Compressing and Decompressing KAT-7 Visibility Data
+==================================================================
 
-- The telescope is simulated with a 1-hour observation, using an integration time of 2 seconds.
-- The starting frequency is 1.4 GHz, with 64 channels, each with a width of 100 kHz.
-- The source is unpolarized with a total intensity of 1 Jy.
-- The full rank of the data is min(timeslots,channels) = 64.
 
-Original image produced using WSClean:
+Simulation Setup
+----------------
+- The KAT-7 telescope is simulated for a 1-hour observation, using an integration time of 2 seconds.
+- The starting frequency is 1.4 GHz, with 64 channels, each having a width of 100 kHz.
+- The source is unpolarized, with a total intensity of 1 Jy.
+- The visibilities are simulated with noise.
+- The full rank of the data is :math:`\min(\mathrm{timeslots}, \mathrm{channels}) = 64`.
+
+Data Image
+----------
+The data image is produced using WSClean. 
 
 .. image:: kat7-sim-dirty.png
    :alt: Original Image
    :width: 400px
    :align: center
 
-**Statistics:**
+.. note::
+   Dirty images are used here because compression can affect the Point Spread Function (PSF).
 
-Note that we use dirty images here since the compression can affect the Point Spread Function (PSF). We use CARTA to open the images and measure the statistics:
+Statistics
+-----------
+
+We use CARTA to open the images and measure the statistics:
 
 - **Peak flux:** \(:math:`1.000429391861 \times 10^{0}`\) Jy/beam
 - **RMS:** \(:math:`1.439807312603 \times 10^{-1}`\) Jy/beam
 - **SNR:** 6.9484
 
 
-**Disk usage:**
+Disk usage
+-----------
+
 The MS occupies 228 MB of disk storage.
 
 
 Compressing the Visibility Data
-------------------------------
-
-To compress the visibility data, run:
+----------------------------------
+Now, we use **visco** compression functionality to compress the visibility data using singular value decomposition (SVD). SVD decomposes the visibility data for each baseline and correlation into three matrix components, U,S, and W. These three components are stored in a **Zarr** store. To compress the visibility data, run:
 
 ::
 
@@ -44,8 +55,8 @@ To compress the visibility data, run:
 
 where:
 
-- `-ms` gives the path to the measurement set,
-- `-zs` specifies the output Zarr store,
+- `-ms` gives the path to the measurement set to compress,
+- `-zs` specifies the output Zarr store path,
 - `-col` specifies the column containing the visibility data,
 - `-corr` defines the correlations to compress,
 - `-cr` is the desired compression rank,
@@ -55,12 +66,13 @@ where:
 - `-da` is the dashboard address,
 - `-csr` is the chunk size along the row.
 
-We compressed the data with a compression rank of 1, retaining only the components corresponding to the first singular value. The compression results are stored as `meerkat-sim.zarr`. In this Zarr store, the data are stored as separate components U,S,V for each correlation and baseline. U,S, and V correspond to the resulting matrices from singular value decomposition (SVD).
+The flag -cr 1 signifies that the data is compressed using only the first singular value. This means that only the compnents of U and W corresponding to the first (highest) value of S are kept in the **Zarr** store. To see how the compression impacts the data, we have to decompress the data from the **Zarr** store back into an MS. To do this, we use the decompression functionality of **visco**.
 
-Decompressing the Compressed Data
----------------------------------
 
-To decompress back into an MS for imaging, run:
+Decompressing the Data from Zarr to MS
+---------------------------------------
+
+To decompress the data from a **zarr** store back into an MS for imaging, run:
 
 ::
 
@@ -71,7 +83,10 @@ where:
 - `-zp` provides the path to the Zarr store containing the compressed data,
 - `-ms` sets the output MS file.
 
-After decompression, the output image (produced using WSClean) is:
+Imaging the Compressed Data
+-----------------------------
+
+After decompressing the data, we turn to WSClean again to image the data. The output image we get is:
 
 .. image:: kat7-sim-decompressed-dirty.png
    :alt: Image after compressing the visibility data
@@ -84,9 +99,13 @@ After decompression, the output image (produced using WSClean) is:
 - **RMS:** \(:math:`1.439824590852 \times 10^{-1}`\) Jy/beam
 - **SNR:** 6.9483
 
+Smearing
+--------
+To see the imapct of compression, the most useful test to perform is to measure the level of smearing incurred  by the compression. After compression, more than 99.99% of the peak flux from the original image is recovered, therefore, there is no smearing incurred by the compression. 
 
-**Disk usage:**  
-The compressed Zarr store uses only 15 MB of disk space.
+Disk usage 
+-----------
+The Zarr store containing the compressed visibility data, along with the rest of the MS data, occupies only 15 MB.
 
 Combining Correlations
 ----------------------
