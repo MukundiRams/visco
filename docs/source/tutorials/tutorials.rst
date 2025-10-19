@@ -13,7 +13,7 @@ Simulation Setup
 ----------------
 - The KAT-7 telescope is simulated for a 1-hour observation, using an integration time of 2 seconds.
 - The starting frequency is 1.4 GHz, with 64 channels, each having a width of 100 kHz.
-- The source is unpolarized, with a total intensity of 1 Jy.
+- The visibilities are simulated for a source at the phase centre that is unpolarized, with a total intensity of 1 Jy.
 - The visibilities are simulated with noise.
 - The full rank of the data is :math:`\min(\mathrm{timeslots}, \mathrm{channels}) = 64`.
 
@@ -93,7 +93,8 @@ After decompressing the data, we turn to WSClean again to image the data. The ou
    :width: 400px
    :align: center
 
-**Statistics:**
+Statistics
+----------
 
 - **Peak flux:** \(:math:`1.000427842140 \times 10^{0}`\) Jy/beam
 - **RMS:** \(:math:`1.439824590852 \times 10^{-1}`\) Jy/beam
@@ -107,39 +108,56 @@ Disk usage
 -----------
 The Zarr store containing the compressed visibility data, along with the rest of the MS data, occupies only 15 MB.
 
-Combining Correlations
-----------------------
+Tutorial 2:cImproving Compression Speed using Correlations 
+===========================================================
 
-Compressing the visibility data using SVD is computationally expensive because the operation must be performed for each baseline and correlation product. To reduce computational cost, you can choose to combine correlations. This approach optimizes compression by grouping the XX & YY and XY & YX correlations together.
+Compressing the visibility data using SVD is computationally expensive. Futhermore, the process is performed for each baseline and correlation product. To reduce the computational cost, one can choose to combine correlations. This approach speeds up the compression by grouping the XX & YY and XY & YX correlations together.
 
-Although our simulation so far includes an unpolarized source where the XY and YX correlations contribute minimally, we can still test this approach. To do so, simply add the ``--correlation-optimized`` flag:
+Although our simulation so far includes an unpolarized source where the XY and YX correlations contribute minimally, we can still test this approach. To do so, we simply add the ``--correlation-optimized`` flag to our run:
 
 ::
 
    visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 3600 --correlation-optimized
 
-This compression produces the following image:
+
+Data Image
+----------
+
+We have included the --correlation-optimized flag, which let us speed up the compression process, in the run. To see the impact of the compression, we, as previous, decompress the data from the **zarr** store back to an MS. The image produced from this process is:
 
 .. image:: kat7-sim-corropt-dirty.png
    :alt: Image after compressing the visibility data by combining correlations
    :width: 400px
    :align: center
 
-**Statistics:**
+Statistics
+------------
 
 - **Peak flux:** \(:math:`1.000429391861 \times 10^{0}`\) Jy/beam
 - **RMS:** \(:math:`1.439828319666 \times 10^{-1}`\) Jy/beam
 - **SNR:** 6.9483
 
+Smearing
+We note here, too, that there is no smearing effects incurred by the compression.
 
-**Disk usage:**
-This correlation optimization also reduces storage requirements, with only 9 MB required for the Zarr store.
+Disk usage
+------------
+This method further reduces the disk storage occupied by the **zarr** store, with only 9 MB occupied.
 
 
-Multiple Point Sources with the MeerKAT Telescope
-===================================================
+Tutorial 3: Compressing and Decompressing MeerKAT Visibility Data
+==================================================================
 
-Now, lets focus on the MeerKAT telescope. Using the same simulation settings as the ones we used for KAT-7, we simulate 10 point sources. All 10 point sources are unpolarized with total intensity of 1 Jy.
+Now, lets focus on the MeerKAT telescope, the reason for the development of this package.
+
+Simulation Setup
+------------------
+
+- We use the same simulation settings we used for the KAT-7.
+- Our sky model now includes 10 unpolarized point sources, each with a total intensiy of 1 Jy
+
+Data Image
+-----------
 
 For this simulation, we get this image:
 
@@ -148,12 +166,18 @@ For this simulation, we get this image:
    :width: 400px
    :align: center
 
-**Statistics:**
-For the source furthest from the phase centre:
+Statistics
+-------------
+
+In this case, we will use the source furthest from the phase centre.
+
 
 - **Peak flux:** \(:math:`9.556545019150 \times 10^{-1}`\) Jy/beam
 - **RMS:** \(:math:`1.629931402737 \times 10^{-2}`\) Jy/beam
 - **SNR:** 58.6316
+
+Compression
+------------
 
 The compression for the MeerKAT telescope is extremely computationally expensive as there are 2016 baselines, so we add the --batch-size flag, which let us decide the number of the baselines to process at the same time. We still choose to compress using the first singular value.
 
