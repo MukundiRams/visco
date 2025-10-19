@@ -143,6 +143,7 @@ The compression for the MeerKAT telescope is extremely computationally expensive
    visco compressms -ms meerkat-sim.ms/ -zs meerkat-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 10000 -bs 200
 
 where:
+
 - `-bs` determine the batch size or the number of baselines to process at once.
 
 
