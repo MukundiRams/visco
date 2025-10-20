@@ -237,9 +237,9 @@ def construct_main_ds(zarr_path: str, column: str):
     
     progress.update_step("Finalizing main table dataset")
     maintable = maintable.assign(**{
-        'DATA': xr.DataArray(reconstructed_data, 
-                            dims=("row", "chan", "corr"),
-                            coords={"ROWID": ("row", rowid)}),
+        # 'DATA': xr.DataArray(reconstructed_data, 
+        #                     dims=("row", "chan", "corr"),
+        #                     coords={"ROWID": ("row", rowid)}),
         'FLAG': xr.DataArray(da.from_array(flags, chunks=chunks),
                             dims=("row", "chan", "corr"),
                             coords={"ROWID": ("row", rowid)}),
@@ -248,7 +248,7 @@ def construct_main_ds(zarr_path: str, column: str):
                             coords={"ROWID": ("row", rowid)})
     })
     
-    return maintable
+    return maintable, reconstructed_data
 
 def open_dataset(zarr_path: str, column: str = 'COMPRESSED_DATA', group: str = None):
     """"
@@ -310,15 +310,16 @@ def write_datasets_to_ms(zarr_path: str, msname: str, column: str):
         progress.update_step("Removing existing MS")
         shutil.rmtree(msname)
     
-    maintable = construct_main_ds(zarr_path=zarr_path, column=column)
+    maintable,reconstruct_vis = construct_main_ds(zarr_path=zarr_path, column=column)
     
     progress.update_step("Writing main table to Measurement Set")    
     write_main = xds_to_table(maintable, f"{msname}")
     
 
     progress.update_step("Computing main table (this may take a while)...")
-    dask.compute(write_main)
-  
+    from dask.diagnostics import ProgressBar
+    with ProgressBar():
+        dask.compute(write_main)
     
     tasks = []
     for folder in zarr_folders:
@@ -330,6 +331,11 @@ def write_datasets_to_ms(zarr_path: str, msname: str, column: str):
         
     progress.update_step("Finalizing Measurement Set")
     dask.compute(*tasks)
+    
+    from casacore.tables import table
+    with table(msname, readonly=False,lockoptions='auto') as ms:
+        ms.putcol("DATA", reconstruct_vis.compute())
+        ms.close()  
     
     progress.update_step("Measurement Set creation completed successfully")
     progress.close()
