@@ -8,6 +8,7 @@
 
 import os
 import sys
+import visco
 sys.path.insert(0, os.path.abspath('..'))
 
 project = 'visco'
@@ -15,11 +16,10 @@ copyright = '2025, Mukundi Ramanyimi'
 author = 'Mukundi Ramanyimi'
 release = '1.0'
 
-
-extensions = []
+release = visco.__version__
+version = visco.__version__
 
 templates_path = ['_templates']
-exclude_patterns = []
 
 language = 'en'
 
@@ -38,12 +38,13 @@ needs_sphinx = "5.0"
 extensions = [
     "sphinx_copybutton",
     "sphinx.ext.autodoc",
-    "sphinx.ext.autosummary",
+    'sphinx.ext.napoleon',
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
     "sphinx.ext.mathjax",
 ]
+
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
