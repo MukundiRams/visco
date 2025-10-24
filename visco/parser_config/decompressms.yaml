@@ -19,6 +19,12 @@ inputs:
     default: 'COMPRESSED_DATA'
     abbreviation: col
 
+  batch_size:
+    info: Number of baseline reconstruction tasks to process in a batch.
+    dtype: int
+    default: 50
+    abbreviation: bs
+
 
 outputs:
   {}

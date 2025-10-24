@@ -374,7 +374,7 @@ def batch_baselines(baselines:list, batch_size:int):
     baseline_list = list(baselines)
     return [baseline_list[i:i + batch_size] for i in range(0, len(baseline_list), batch_size)]
 
-def compress_visdata_batched(zarr_output_path: str,
+def compress_visdata(zarr_output_path: str,
                            compressor: str,
                            level: int,
                            correlation: str,
@@ -566,10 +566,9 @@ def compress_visdata_batched(zarr_output_path: str,
                     ciyy = np.where(corr_types[0] == 12)[0][0]
                     
                     
-                    vis_xx = da.from_array(baseline_data[column].data[:,:,cixx], 
-                                         chunks=baseline_data[column].data[:,:,cixx].shape)
-                    vis_yy = da.from_array(baseline_data[column].data[:,:,ciyy], 
-                                         chunks=baseline_data[column].data[:,:,ciyy].shape)
+                    vis_xx = baseline_data[column].data[:,:,cixx]
+                                    
+                    vis_yy = baseline_data[column].data[:,:,ciyy]
                     
                     diag_visdata = da.vstack([vis_xx, vis_yy])
                     
@@ -589,10 +588,9 @@ def compress_visdata_batched(zarr_output_path: str,
                     cixy = np.where(corr_types[0] == 10)[0][0]
                     ciyx = np.where(corr_types[0] == 11)[0][0]
                     
-                    vis_xy = da.from_array(baseline_data[column].data[:,:,cixy], 
-                                         chunks=baseline_data[column].data[:,:,cixy].shape)
-                    vis_yx = da.from_array(baseline_data[column].data[:,:,ciyx], 
-                                         chunks=baseline_data[column].data[:,:,ciyx].shape)
+                    vis_xy = baseline_data[column].data[:,:,cixy]
+                                         
+                    vis_yx = baseline_data[column].data[:,:,ciyx]
                     
                     offdiag_visdata = da.vstack([vis_xy, vis_yx])
                     
@@ -842,7 +840,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
     _global_progress.set_description("Processing visibility data")
     
     
-    processed = compress_visdata_batched(
+    processed = compress_visdata(
         zarr_output_path=zarr_output_path,
         compressor=compressor,
         level=level,
@@ -929,3 +927,4 @@ def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: 
         'final_compute': 1,
         'cleanup': 1
     }
+    

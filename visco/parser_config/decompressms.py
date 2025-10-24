@@ -29,6 +29,7 @@ def decompressrunit(**kwargs):
     zarr_path = opts.zarr_path
     column = opts.column
     ms = opts.ms
+    batch_size = opts.batch_size
     
-    decompress_ms.write_datasets_to_ms(zarr_path, ms, column)
+    decompress_ms.write_datasets_to_ms(zarr_path, ms, column, batch_size)
     
