@@ -10,7 +10,7 @@ Tutorial 1: Compressing and Decompressing KAT-7 Visibility Data
 
 
 Simulation setup
-+++++++++++++++++
+----------------
 - The KAT-7 telescope is simulated for a 1-hour observation, using an integration time of 2 seconds.
 - The starting frequency is 1.4 GHz, with 64 channels, each having a width of 100 kHz.
 - The visibilities are simulated for a source at the phase centre that is unpolarized, with a total intensity of 1 Jy.
@@ -29,8 +29,8 @@ The data image is produced using WSClean.
 .. note::
    Dirty images are used here because compression can affect the Point Spread Function (PSF).
 
-Statistics
------------
+**Statistics:**
+
 
 We use CARTA to open the images and measure the statistics:
 
@@ -39,8 +39,8 @@ We use CARTA to open the images and measure the statistics:
 - **SNR:** 6.9484
 
 
-Disk usage
------------
+**Disk usage:**
+
 
 The MS occupies 228 MB of disk storage.
 
