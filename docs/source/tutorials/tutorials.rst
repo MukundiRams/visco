@@ -17,8 +17,8 @@ Simulation setup
 - The visibilities are simulated with noise.
 - The full rank of the data is :math:`\min(\mathrm{timeslots}, \mathrm{channels}) = 64`.
 
-Data image
-----------
+**Data image:**
+
 The data image is produced using WSClean. 
 
 .. image:: kat7-sim-dirty.png
@@ -83,8 +83,8 @@ where:
 - `-zp` provides the path to the Zarr store containing the compressed data,
 - `-ms` sets the output MS file.
 
-Imaging the compressed Data
------------------------------
+**Imaging the compressed Data:**
+
 
 After decompressing the data, we turn to WSClean again to image the data. The output image we get is:
 
@@ -93,19 +93,19 @@ After decompressing the data, we turn to WSClean again to image the data. The ou
    :width: 400px
    :align: center
 
-Statistics
-----------
+**Statistics:**
+
 
 - **Peak flux:** \(:math:`1.000427842140 \times 10^{0}`\) Jy/beam
 - **RMS:** \(:math:`1.439824590852 \times 10^{-1}`\) Jy/beam
 - **SNR:** 6.9483
 
-Smearing
---------
+**Smearing:**
+
 To see the imapct of compression, the most useful test to perform is to measure the level of smearing incurred  by the compression. After compression, more than 99.99% of the peak flux from the original image is recovered, therefore, there is no smearing incurred by the compression. 
 
-Disk usage 
------------
+**Disk usage:**
+
 The Zarr store containing the compressed visibility data, along with the rest of the MS data, occupies only 15 MB, representing a compression factor of 15.
 
 Tutorial 2: Improving Compression Speed using Correlations 
@@ -120,29 +120,29 @@ Although our simulation so far includes an unpolarized source where the XY and Y
    visco compressms -ms kat7-sim.ms/ -zs kat7-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 1 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 3600 --correlation-optimized
 
 
-Data image
-----------
+**Data image:**
 
-We have included the --correlation-optimized flag, which let us speed up the compression process, in the run. To see the impact of the compression, we, as previous, decompress the data from the **zarr** store back to an MS. The image produced from this process is:
+
+We have included the --correlation-optimized flag, which let us speed up the compression process, in the run. To see the impact of the compression, we, as previously, decompress the data from the **zarr** store back to an MS. The image produced from this process is:
 
 .. image:: kat7-sim-corropt-dirty.png
    :alt: Image after compressing the visibility data by combining correlations
    :width: 400px
    :align: center
 
-Statistics
-------------
+Statistics:**
+
 
 - **Peak flux:** \(:math:`1.000429391861 \times 10^{0}`\) Jy/beam
 - **RMS:** \(:math:`1.439828319666 \times 10^{-1}`\) Jy/beam
 - **SNR:** 6.9483
 
-Smearing
-----------
+**Smearing:**
+
 We note here, too, that there is no smearing effects incurred by the compression.
 
-Disk usage
-------------
+**Disk usage:**
+
 This method further reduces the disk storage occupied by the **zarr** store, with only 9 MB occupied. The compression factor achieved is 25.
 
 
@@ -157,8 +157,8 @@ Simulation setup
 - We use the same simulation settings we used for the KAT-7.
 - Our sky model now includes 10 unpolarized point sources, each with a total intensiy of 1 Jy
 
-Data image
------------
+**Data image:**
+
 
 For this simulation, we get this image:
 
@@ -167,8 +167,8 @@ For this simulation, we get this image:
    :width: 400px
    :align: center
 
-Statistics
--------------
+**Statistics:**
+
 
 In this case, we will use the source furthest from the phase centre.
 
@@ -177,8 +177,8 @@ In this case, we will use the source furthest from the phase centre.
 - **RMS:** \(:math:`1.672033648492 \times 10^{-2}`\) Jy/beam
 - **SNR:** 59.1954
 
-Disk usage
-----------
+**Disk usage:**
+
 The MS occupies 43 GB of disk storage.
 
 
@@ -195,8 +195,8 @@ where:
 
 - `-bs` determine the batch size or the number of baselines to process at once.
 
-Data image
-----------
+**Data image:**
+
 After compressing the data using only the first singular value, we get this image:
 
 .. image:: meerkat-sim-cr1-dirty.png
@@ -204,21 +204,21 @@ After compressing the data using only the first singular value, we get this imag
    :width: 400px
    :align: center
 
-Statistics
-------------
+**Statistics:**
+
 Looking at the image produced after the compression, there is no immediate difference. However, going back to the furthest source from the phase centre, we get:
 
 - **Peak flux:** \(:math:`5.085088610649 \times 10^{-1}`\) Jy/beam
 - **RMS:** \(:math:`1.192684202182 \times 10^{-2}`\) Jy/beam
 - **SNR:** 42.6357
 
-Smearing
----------
+**Smearing:**
+
 
 After compression with the first singular value, only 51% of the peak flux is recovered on the source furthest from the phase centre. This demonstrates that in  this case, the first singular value is not sufficient to fully retain or recover the signal. Consequently, we must to use more singular values in the compression.
 
-Disk usage
-----------
+**Disk usage:**
+
 The **zarr** store containing the compressed data only occupies  1.2 GB of disk storage, representing a compression factor of 35.
 
 
@@ -231,8 +231,8 @@ Since compression using only the first singular value did not work, here we try 
    visco compressms -ms meerkat-sim.ms/ -zs meerkat-sim.zarr -col DATA -corr XX,XY,YX,YY -cr 6 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 10000 -bs 200
 
 
-Data image
-----------
+**Data image:**
+
 After compressing the data using the first 6 singular value, we get this image:
 
 .. image:: meerkat-sim-cr6-dirty.png
@@ -240,21 +240,21 @@ After compressing the data using the first 6 singular value, we get this image:
    :width: 400px
    :align: center
 
-Statistics
-------------
+**Statistics:**
+
 With the first 6 singular values, we get:
 
 - **Peak flux:** \(:math:`9.898513555527 \times 10^{-1}`\) Jy/beam
 - **RMS:** \(:math:`1.672275516698 \times 10^{-2}`\) Jy/beam
 - **SNR:** 59.1919
 
-Smearing
----------
+**Smearing:**
+
 
 After compression with the first 6 singular value, 100% of the peak flux was recovered for the source furthest from the phase centre. This means that the first 6 singular values are sufficient for the compression and to fully retain the signal.
 
-Disk usage
-----------
+**Disk usage:**
+
 The **zarr** store containing the compressed data now occupies  2.2 GB of disk storage, representing a compression factor of 20.
 
 
