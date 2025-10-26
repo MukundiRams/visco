@@ -215,7 +215,7 @@ Looking at the image produced after the compression, there is no immediate diffe
 Smearing
 ---------
 
-After compression with the first singular value, only \(:math:`51 \% `\) of the peak flux is recovered on the source furthest from the phase centre. This demonstrates that in  this case, the first singular value is not sufficient to fully retain or recover the signal. Consequently, we must to use more singular values in the compression.
+After compression with the first singular value, only 51% of the peak flux is recovered on the source furthest from the phase centre. This demonstrates that in  this case, the first singular value is not sufficient to fully retain or recover the signal. Consequently, we must to use more singular values in the compression.
 
 Disk usage
 ----------
@@ -251,7 +251,7 @@ With the first 6 singular values, we get:
 Smearing
 ---------
 
-After compression with the first 6 singular value, \(:math:`100 \% `\) of the peak flux was recovered for the source furthest from the phase centre. This means that the first 6 singular values are sufficient for the compression and to fully retain the signal.
+After compression with the first 6 singular value, 100% of the peak flux was recovered for the source furthest from the phase centre. This means that the first 6 singular values are sufficient for the compression and to fully retain the signal.
 
 Disk usage
 ----------
