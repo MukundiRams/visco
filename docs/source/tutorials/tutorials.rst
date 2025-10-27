@@ -297,8 +297,3 @@ There is no smearing since we chose a decorrelation level 0f 98%.
 **Disk usage:**
 
 Using the decorrelation method results in a less compression ratio. This is because more singular values could be used than needed. As a result, the **zarr** store containing the compressed data now occupies  12 GB of disk storage, with a compression factor of 4.
-
-
-
-
-
