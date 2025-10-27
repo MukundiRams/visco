@@ -36,7 +36,7 @@ We use CARTA to open the images and measure the statistics:
 
 - **Peak flux:** \(:math:`1.000429391861 \times 10^{0}`\) Jy/beam
 - **RMS:** \(:math:`1.439807312603 \times 10^{-1}`\) Jy/beam
-- **SNR:** 6.9484
+- **SNR:** 7
 
 
 **Disk usage:**
@@ -66,7 +66,7 @@ where:
 - `-da` is the dashboard address,
 - `-csr` is the chunk size along the row.
 
-The flag -cr 1 signifies that the data is compressed using only the first singular value. This means that only the compnents of U and W corresponding to the first (highest) value of S are kept in the **Zarr** store. To see how the compression impacts the data, we have to decompress the data from the **Zarr** store back into an MS. To do this, we use the decompression functionality of **visco**.
+The flag -cr 1 signifies that the data is compressed using only the first singular value or a comression rank of 1 (reducing the data rank to 1). This means that only the compnents of U and W corresponding to the first (highest) value of S are kept in the **Zarr** store. To see how the compression impacts the data, we have to decompress the data from the **Zarr** store back into an MS. To do this, we use the decompression functionality of **visco**.
 
 
 Decompressing the data from Zarr to MS
@@ -98,7 +98,7 @@ After decompressing the data, we turn to WSClean again to image the data. The ou
 
 - **Peak flux:** \(:math:`1.000427842140 \times 10^{0}`\) Jy/beam
 - **RMS:** \(:math:`1.439824590852 \times 10^{-1}`\) Jy/beam
-- **SNR:** 6.9483
+- **SNR:** 7
 
 **Smearing:**
 
@@ -135,7 +135,7 @@ Statistics:**
 
 - **Peak flux:** \(:math:`1.000429391861 \times 10^{0}`\) Jy/beam
 - **RMS:** \(:math:`1.439828319666 \times 10^{-1}`\) Jy/beam
-- **SNR:** 6.9483
+- **SNR:** 7
 
 **Smearing:**
 
@@ -149,7 +149,7 @@ This method further reduces the disk storage occupied by the **zarr** store, wit
 Tutorial 3: Compressing and Decompressing MeerKAT Visibility Data
 ==================================================================
 
-Now, lets focus on the MeerKAT telescope, the reason for the development of this package.
+Now, lets focus on the MeerKAT telescope.
 
 Simulation setup
 ------------------
@@ -173,9 +173,9 @@ For this simulation, we get this image:
 In this case, we will use the source furthest from the phase centre.
 
 
-- **Peak flux:** \(:math:`9.897630810738e \times 10^{-1}`\) Jy/beam
-- **RMS:** \(:math:`1.672033648492 \times 10^{-2}`\) Jy/beam
-- **SNR:** 59.1954
+- **Peak flux:** \(:math:`9.897630810738 \times 10^{-1}`\) Jy/beam
+- **RMS:** \(:math:`1.888134699183 \times 10^{-2}`\) Jy/beam
+- **SNR:** 52
 
 **Disk usage:**
 
@@ -197,7 +197,7 @@ where:
 
 **Data image:**
 
-After compressing the data using only the first singular value, we get this image:
+After compressing the data using only the first singular value (compression rank of 1), we get this image:
 
 .. image:: meerkat-sim-cr1-dirty.png
    :alt: First singular image for the MeerKAT simulation
@@ -206,16 +206,16 @@ After compressing the data using only the first singular value, we get this imag
 
 **Statistics:**
 
-Looking at the image produced after the compression, there is no immediate difference. However, going back to the furthest source from the phase centre, we get:
+Looking at the image produced after the compression, there is no visible difference. However, going back to the furthest source from the phase centre, we get:
 
 - **Peak flux:** \(:math:`5.085088610649 \times 10^{-1}`\) Jy/beam
 - **RMS:** \(:math:`1.192684202182 \times 10^{-2}`\) Jy/beam
-- **SNR:** 42.6357
+- **SNR:** 34
 
 **Smearing:**
 
 
-After compression with the first singular value, only 51% of the peak flux is recovered on the source furthest from the phase centre. This demonstrates that in  this case, the first singular value is not sufficient to fully retain or recover the signal. Consequently, we must to use more singular values in the compression.
+After compression with the first singular value, only 51% of the peak flux is recovered on the source furthest from the phase centre. This demonstrates that in  this case, the first singular value is not sufficient to fully retain or recover the signal. Consequently, we must use more singular values (higher compression rank) in the compression.
 
 **Disk usage:**
 
@@ -224,7 +224,7 @@ The **zarr** store containing the compressed data only occupies  1.2 GB of disk 
 
 Compression using the first 6 singular values
 ------------------------------------------------
-Since compression using only the first singular value did not work, here we try to use the first 6 singular values. We only change our --cr flag on our run:
+Since compression using only the first singular value did not work, here we try to use the first 6 singular values (compression rank of 6). We only change our --cr flag on our run:
 
 ::
 
@@ -246,12 +246,12 @@ With the first 6 singular values, we get:
 
 - **Peak flux:** \(:math:`9.898513555527 \times 10^{-1}`\) Jy/beam
 - **RMS:** \(:math:`1.672275516698 \times 10^{-2}`\) Jy/beam
-- **SNR:** 59.1919
+- **SNR:** 52
 
 **Smearing:**
 
 
-After compression with the first 6 singular value, 100% of the peak flux was recovered for the source furthest from the phase centre. This means that the first 6 singular values are sufficient for the compression and to fully retain the signal.
+After compression with the first 6 singular value, 100% of the peak flux is recovered for the source furthest from the phase centre. This means that the first 6 singular values are sufficient for the compression and to fully retain the signal.
 
 **Disk usage:**
 
@@ -261,11 +261,42 @@ The **zarr** store containing the compressed data now occupies  2.2 GB of disk s
 Compression using the Decorrelation flag
 ----------------------------------------
 
+Instead of enforcing the same compression rank (singular values) across all baselines for compression, one can choose to apply variable compression rank for each baseline by using the --decorrelation flag. By specifying decorrelation level, the user specifies the minimum percentage of the signal that needs to be retained for each baselines. This is the recommended method, especially if one is dealing with low signal-to-noise ratio (SNR) sources, as applying the same compression rank across all the baselines leads to significant smearing effects on long baselines. Using this method is equivalent to using baseline dependent averaging (BDA) with SVD, resulting in short baselines being more aggressively compressed than long baselines. To use this, one can run:
+
+::
+
+   visco compressms -ms meerkat-sim.ms/ -zs meerkat-sim.zarr -col DATA -corr XX,XY,YX,YY -dec 0.98 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 10000 -bs 200
+
+
+where:
+
+- `-dec` specifies the percentage signal to be retained for each baseline.
 
 
 
+**Data image:**
+
+In this case, we specified a decorrelation level of 0.98, which means that on each baseline, at least 98% of the signal will be retained. With this, we get the following image:
+
+.. image:: meerkat-sim-dec98-dirty.png
+   :alt: Decorrelation image for the MeerKAT simulation
+   :width: 400px
+   :align: center
+
+**Statistics:**
+
+- **Peak flux:** \(:math:`9.897790551186  \times 10^{-1}`\) Jy/beam
+- **RMS:** \(:math:`1.888192330344 \times 10^{-2}`\) Jy/beam
+- **SNR:** 52
+
+**Smearing:**
 
 
+There is no smearing since we chose a decorrelation level 0f 98%.
+
+**Disk usage:**
+
+Using the decorrelation method results in a less compression ratio. This is because more singular values could be used than needed. As a result, the **zarr** store containing the compressed data now occupies  12 GB of disk storage, with a compression factor of 4.
 
 
 
