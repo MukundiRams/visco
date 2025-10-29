@@ -95,7 +95,8 @@ def write_table_to_zarr(ms_path:str, zarr_path:str,
         The compression level to use.
     """
     if _global_progress:
-        _global_progress.set_description(f"Converting MS to a Zarr store")
+        table_name = subtable if subtable else "MAIN table"
+        _global_progress.set_description(f"Converting {table_name} to Zarr")
 
     if subtable:
         table_path = f"{ms_path}/{subtable}"
@@ -546,7 +547,10 @@ def compress_visdata(zarr_output_path: str,
     
     for batch_num, baseline_batch in enumerate(baseline_batches):
         if _global_progress:
-            _global_progress.set_description(f"Processing batch {batch_num+1}/{len(baseline_batches)}")
+            progress_pct = int((processed_baselines / total_baselines) * 100) if total_baselines > 0 else 0
+            _global_progress.set_description(
+                f"Processing baselines [{processed_baselines}/{total_baselines}, {progress_pct}%]"
+            )
         
         batch_tasks = []
         for antenna1, antenna2 in baseline_batch:
@@ -626,10 +630,6 @@ def compress_visdata(zarr_output_path: str,
                     save_path = Path(zarr_output_path) / 'MAIN' / f"{outcolumn}" / f'{ant1name}&{ant2name}' / f'{corr_type}'
                     save_task = delayed(write_svd_to_zarr)(task, save_path, compressor, level, row_idx)
                     batch_tasks.append(save_task)
-            
-            processed_baselines += 1
-            if _global_progress:
-                _global_progress.update(1)
         
         if batch_tasks:
             if _global_progress:
@@ -638,10 +638,10 @@ def compress_visdata(zarr_output_path: str,
             with TqdmCallback(desc=f"Batch {batch_num+1}"):
                 dask.compute(*batch_tasks)
             
+            
+            processed_baselines += len(baseline_batch)
             if _global_progress:
-                processed_baselines += len(baseline_batch)
                 _global_progress.update(len(baseline_batch))
-                _global_progress.set_description(f"Processed {processed_baselines}/{total_baselines} baselines")
     
     return processed_baselines
 
@@ -870,9 +870,9 @@ def compress_full_ms(ms_path:str, zarr_path:str,
     if use_model_data and model_data:
         delete_zarr_groups(zarr_output_path, f"MAIN/{model_data}")
     
-    _global_progress.update(work_breakdown['cleanup'])
     if _global_progress:
-        _global_progress.update(1)  
+        _global_progress.update(1)
+  
     _global_progress.set_description("✅ MS compression completed successfully!")
     
     client.close()
@@ -880,7 +880,7 @@ def compress_full_ms(ms_path:str, zarr_path:str,
         _global_progress.close()
         _global_progress = None
 
-def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: bool,  batch_size:int, antennas: list = None):
+def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: bool, batch_size: int, antennas: list = None):
     """Calculate the total amount of work to be done for accurate progress tracking."""
     
     def list_subtables(ms_path):
@@ -904,17 +904,6 @@ def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: 
                         unique_baselines.add((min(a1, a2), max(a1, a2)))
                 baselines = list(unique_baselines)
             baseline_work = len(baselines)
-            
-            # corr_list_user = correlation.split(',')
-            # num_batches = (len(baselines) + batch_size - 1) // batch_size
-            # if correlation_optimized:
-            #     baseline_work = num_batches
-            #     if 'XX' in corr_list_user and 'YY' in corr_list_user:
-            #         baseline_work += num_batches
-            #     if 'XY' in corr_list_user and 'YX' in corr_list_user:
-            #         baseline_work += num_batches
-            # else:
-            #     baseline_work = num_batches * len(corr_list_user)
 
     except:
         baseline_work = 250
@@ -924,7 +913,5 @@ def calculate_total_work(ms_path: str, correlation: str, correlation_optimized: 
         'flag_processing': 1,
         'weight_processing': 1,
         'baseline_processing': baseline_work,
-        'final_compute': 1,
         'cleanup': 1
     }
-    
