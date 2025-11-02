@@ -28,4 +28,4 @@ The other application is ``decompressms``. This decompresses the compressed data
    
 .. code-block:: bash
 
-    visco decompressms --zarr-path youroutputzarr.zarr --ms decompressed-data.ms
+    visco decompressms --zarrstore youroutputzarr.zarr --ms decompressed-data.ms

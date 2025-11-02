@@ -20,7 +20,6 @@ parserfile = File(f"{thisdir}/{command}.yaml")
 config = paramfile_loader(parserfile, compression_files)[command]
 
 
-
 @cli.command(command)
 @click.version_option(str(visco.__version__))
 @clickify_parameters(config)
@@ -46,7 +45,7 @@ def compressrunit(**kwargs):
     flag_estimate = opts.flagestimate
     decorrelation = opts.decorrelation
     compressionrank = opts.compressionrank
-    flagvalue = opts.flagvalue 
+    flagvalue = opts.flagvalue
     antennas = opts.antennas
     nworkers = opts.nworkers
     nthreads = opts.nthreads
@@ -54,26 +53,34 @@ def compressrunit(**kwargs):
     direct_to_workers = opts.direct_to_workers
     dashboard_addr = opts.dashboard_address
     host_addr = opts.host_address
-    
-    compress_ms.compress_full_ms(ms_path=ms, zarr_path=zarr_path, 
-                                 consolidated=consolidated,
-                                 chunk_size_row=chunk_size_row,
-                                 overwrite=overwrite,
-                                 compressor=compressor,
-                                 nworkers=nworkers,
-                                 nthreads=nthreads,
-                                 memory_limit=memory_limit,
-                                 direct_to_workers=direct_to_workers,
-                                 level=level,
-                                 correlation=correlation,
-                                 correlation_optimized=corr_opt,
-                                 fieldid=fieldid, ddid=ddid,scan=scan,
-                                 column=column, outcolumn=outcolumn,
-                                 batch_size=batch_size,
-                                 dashboard_addr=dashboard_addr,
-                                 host_addr=host_addr,
-                                 use_model_data=use_model_data, model_data=model_data,
-                                 flag_estimate=flag_estimate, decorrelation=decorrelation,
-                                 compressionrank=compressionrank,flagvalue=flagvalue,
-                                 antennas=antennas)
-                                  
+
+    compress_ms.compress_full_ms(
+        ms_path=ms,
+        zarr_path=zarr_path,
+        consolidated=consolidated,
+        chunk_size_row=chunk_size_row,
+        overwrite=overwrite,
+        compressor=compressor,
+        nworkers=nworkers,
+        nthreads=nthreads,
+        memory_limit=memory_limit,
+        direct_to_workers=direct_to_workers,
+        level=level,
+        correlation=correlation,
+        correlation_optimized=corr_opt,
+        fieldid=fieldid,
+        ddid=ddid,
+        scan=scan,
+        column=column,
+        outcolumn=outcolumn,
+        batch_size=batch_size,
+        dashboard_addr=dashboard_addr,
+        host_addr=host_addr,
+        use_model_data=use_model_data,
+        model_data=model_data,
+        flag_estimate=flag_estimate,
+        decorrelation=decorrelation,
+        compressionrank=compressionrank,
+        flagvalue=flagvalue,
+        antennas=antennas,
+    )

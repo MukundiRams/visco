@@ -1,4 +1,3 @@
-from doctest import OutputChecker
 import glob
 import os
 import click
@@ -26,9 +25,9 @@ config = paramfile_loader(parserfile, decompressms_files)[command]
 @clickify_parameters(config)
 def decompressrunit(**kwargs):
     opts = OmegaConf.create(kwargs)
-    zarr_path = opts.zarr_path
+    zarr_path = opts.zarrstore
     column = opts.column
     ms = opts.ms
-    
-    decompress_ms.write_datasets_to_ms(zarr_path, ms, column)
-    
+    batch_size = opts.batch_size
+
+    decompress_ms.write_datasets_to_ms(zarr_path, ms, column, batch_size)

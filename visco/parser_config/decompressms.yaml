@@ -1,11 +1,11 @@
   
 inputs:  
-  zarr_path:
+  zarrstore:
     info: Path to the zarr file containing the compressed data components.
     dtype: str
     required: true
     default: null
-    abbreviation: zp
+    abbreviation: zs
 
   ms:
     info: The output Measurement Set file name.
@@ -18,6 +18,12 @@ inputs:
     dtype: str
     default: 'COMPRESSED_DATA'
     abbreviation: col
+
+  batch_size:
+    info: Number of baseline reconstruction tasks to process in a batch.
+    dtype: int
+    default: 50
+    abbreviation: bs
 
 
 outputs:
