@@ -9,26 +9,26 @@
 import os
 import sys
 import visco
-sys.path.insert(0, os.path.abspath('..'))
 
-project = 'visco'
-copyright = '2025, Mukundi Ramanyimi'
-author = 'Mukundi Ramanyimi'
-release = '1.0'
+sys.path.insert(0, os.path.abspath(".."))
+
+project = "visco"
+copyright = "2025, Mukundi Ramanyimi"
+author = "Mukundi Ramanyimi"
+release = "1.0"
 
 release = visco.__version__
 version = visco.__version__
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
-language = 'en'
+language = "en"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'furo'
-html_static_path = ['_static']
-
+html_theme = "furo"
+html_static_path = ["_static"]
 
 
 needs_sphinx = "5.0"
@@ -38,10 +38,11 @@ needs_sphinx = "5.0"
 extensions = [
     "sphinx_copybutton",
     "sphinx.ext.autodoc",
-    'sphinx.ext.napoleon',
+    "sphinx.ext.napoleon",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.extlinks",
+    "sphinx.ext.mathjax",
 ]
 
 

@@ -147,7 +147,7 @@ inputs:
 
   flagvalue:
     info: The value with which to replace all the visibility flagged data. This method is not recommended, as it will lead to noise amplification, making the SVD compression ineffiencit or rendering it futile. 
-    dtype: float
+    dtype: str
     default: null
     abbreviation: fv
   
