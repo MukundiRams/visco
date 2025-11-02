@@ -313,12 +313,14 @@ One way to handle flagged data is to replace the flagged visibilities with a spe
 ::
 
    visco compressms -ms meerkat-sim.ms/ -zs meerkat-sim.zarr -col DATA -corr XX,XY,YX,YY --flagvalue 1+1j -dec 0.95 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 10000 -bs 200
- 
- This command replaces all flagged visibilities with the complex value \(1 + 1j\) before performing compression. This approach is not recommended as it can amplify noise and introduce artifacts.
 
- Using interpolation
- -----------------------
- Another approach is to interpolate the flagged data points based on the surrounding unflagged data. This can be done using the `--flagestimate` option. For example:
+
+This command replaces all flagged visibilities with the complex value \(1 + 1j\) before performing compression. This approach is not recommended as it can amplify noise and introduce artifacts.
+
+
+Using interpolation
+-----------------------
+Another approach is to interpolate the flagged data points based on the surrounding unflagged data. This can be done using the `--flagestimate` option. For example:
 
 ::
 
