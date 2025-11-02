@@ -76,7 +76,7 @@ To decompress the data from a **zarr** store back into an MS for imaging, run:
 
 ::
 
-   visco decompressms -zp kat7-sim.zarr/ -ms kat7-sim-decompressed.ms
+   visco decompressms -zs kat7-sim.zarr/ -ms kat7-sim-decompressed.ms
 
 where:
 
@@ -111,7 +111,7 @@ The Zarr store containing the compressed visibility data, along with the rest of
 Tutorial 2: Improving Compression Speed using Correlations 
 ===========================================================
 
-Compressing the visibility data using SVD is computationally expensive. Futhermore, the process is performed for each baseline and correlation product. To reduce the computational cost, one can choose to combine correlations. This approach speeds up the compression by grouping the XX & YY and XY & YX correlations together.
+Compressing the visibility data using SVD is computationally expensive. Futhermore, the process is performed for each baseline and correlation product. To reduce the computational cost, you can choose to combine correlations. This approach speeds up the compression by grouping the XX & YY and XY & YX correlations together.
 
 Although our simulation so far includes an unpolarized source where the XY and YX correlations contribute minimally, we can still test this approach. To do so, we simply add the ``--correlation-optimized`` flag to our run:
 
@@ -261,7 +261,7 @@ The **zarr** store containing the compressed data now occupies  2.2 GB of disk s
 Compression using the Decorrelation flag
 ----------------------------------------
 
-Instead of enforcing the same compression rank (singular values) across all baselines for compression, one can choose to apply variable compression rank for each baseline by using the --decorrelation flag. By specifying decorrelation level, the user specifies the minimum percentage of the signal that needs to be retained for each baselines. This is the recommended method, especially if one is dealing with low signal-to-noise ratio (SNR) sources, as applying the same compression rank across all the baselines leads to significant smearing effects on long baselines. Using this method is equivalent to using baseline dependent averaging (BDA) with SVD, resulting in short baselines being more aggressively compressed than long baselines. To use this, one can run:
+Instead of enforcing the same compression rank (singular values) across all baselines for compression, you can choose to apply variable compression rank for each baseline by using the --decorrelation flag. By specifying decorrelation level, the user specifies the minimum percentage of the signal that needs to be retained for each baselines. This is the recommended method, especially if you are dealing with low signal-to-noise ratio (SNR) sources, as applying the same compression rank across all the baselines leads to significant smearing effects on long baselines. Using this method is equivalent to using baseline dependent averaging (BDA) with SVD, resulting in short baselines being more aggressively compressed than long baselines. To use this, you can run:
 
 ::
 
@@ -297,3 +297,41 @@ There is no smearing since we chose a decorrelation level 0f 98%.
 **Disk usage:**
 
 Using the decorrelation method results in a less compression ratio. This is because more singular values could be used than needed. As a result, the **zarr** store containing the compressed data now occupies  12 GB of disk storage, with a compression factor of 4.
+
+.. note::
+   The choice of compression rank or decorrelation level depends on the specific scientific goals and the acceptable level of data loss. Users should carefully evaluate the trade-offs between compression efficiency and data fidelity for their particular use cases.
+
+Tutorial 4: Dealing with Flagged Data
+======================================
+
+In real observations, some data points are often flagged due to various reasons such as radio frequency interference (RFI) or instrumental issues. **visco** can handle flagged data during compression using three different options.
+
+Using a replacement value
+----------------------------
+One way to handle flagged data is to replace the flagged visibilities with a specific value before compression. This can be done using the `--flagvalue` option. For example, to replace flagged data with one, you can run:
+
+::
+
+   visco compressms -ms meerkat-sim.ms/ -zs meerkat-sim.zarr -col DATA -corr XX,XY,YX,YY --flagvalue 1+1j -dec 0.95 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 10000 -bs 200
+ 
+ This command replaces all flagged visibilities with the complex value \(1 + 1j\) before performing compression. This approach is not recommended as it can amplify noise and introduce artifacts.
+
+ Using interpolation
+ -----------------------
+ Another approach is to interpolate the flagged data points based on the surrounding unflagged data. This can be done using the `--flagestimate` option. For example:
+
+::
+
+   visco compressms -ms meerkat-sim.ms/ -zs meerkat-sim.zarr -col DATA -corr XX,XY,YX,YY --flagestimate -dec 0.95 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 10000 -bs 200
+
+This approach estimates the flagged visibilities by first gridding the unflagged data and then interpolating to fill in the flagged points. This method is more effective, However, it can be computationally intensive.
+
+Using MODEL Data
+-----------------------
+A more robust method is to use the MODEL column in the Measurement Set to fill in the flagged data points. This can be done using the `--use-model-data` option. For example:
+
+::
+
+   visco compressms -ms meerkat-sim.ms/ -zs meerkat-sim.zarr -col DATA -corr XX,XY,YX,YY --use-model-data -dec 0.95 -nw 8 -nt 1 -ml 4GB -da 2727 -csr 10000 -bs 200
+
+This is the recommended approach as it leverages the existing model visibilities to accurately fill in the flagged data points, leading to better compression performance and reduced artifacts.

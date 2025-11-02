@@ -1,11 +1,11 @@
   
 inputs:  
-  zarr_path:
+  zarrstore:
     info: Path to the zarr file containing the compressed data components.
     dtype: str
     required: true
     default: null
-    abbreviation: zp
+    abbreviation: zs
 
   ms:
     info: The output Measurement Set file name.
